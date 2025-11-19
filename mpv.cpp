@@ -178,6 +178,12 @@ void MpvObject::initialize_mpv() {
     foreach (const QString &name, observed_properties) {
         mpv_observe_property(mpv, 0, name.toStdString().c_str(), MPV_FORMAT_NODE);
     }
+
+    // BorderBreaker: Observe video parameters for auto-aspect ratio
+    mpv_observe_property(mpv, 0, "video-out-params", MPV_FORMAT_NODE);
+    mpv_observe_property(mpv, 0, "video-params", MPV_FORMAT_NODE);
+    mpv_observe_property(mpv, 0, "panscan", MPV_FORMAT_DOUBLE);
+    mpv_observe_property(mpv, 0, "video-aspect-override", MPV_FORMAT_DOUBLE);
 }
 
 void MpvObject::on_update(void *ctx)

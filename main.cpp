@@ -4,7 +4,7 @@
 
 #include <clocale>
 
-#define APP_TITLE "Stremio - Freedom to Stream"
+#define APP_TITLE "Stremio-BorderBreaker"
 
 #define DESKTOP true
 
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
     Application::setAttribute(Qt::AA_EnableHighDpiScaling);
     #endif
 
-    Application::setApplicationName("Stremio");
+    Application::setApplicationName("Stremio-BorderBreaker");
     Application::setApplicationVersion(STREMIO_SHELL_VERSION);
     Application::setOrganizationName("Smart Code ltd");
     Application::setOrganizationDomain("stremio.com");

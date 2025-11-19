@@ -9,6 +9,7 @@ import com.stremio.screensaver 1.0
 import com.stremio.libmpv 1.0
 import com.stremio.clipboard 1.0
 import QtQml 2.2
+import Qt.labs.settings 1.0
 
 import "autoupdater.js" as Autoupdater
 
@@ -296,10 +297,158 @@ ApplicationWindow {
     //
     // Player
     //
+    //
+    // Player
+    //
     MpvObject {
         id: mpv
         anchors.fill: parent
-        onMpvEvent: function(ev, args) { transport.event(ev, args) }
+        onMpvEvent: function(ev, args) { 
+            transport.event(ev, args);
+            if (ev === "mpv-prop-change" && args.name === "video-out-params") {
+                borderBreaker.checkAutoDetect(args.data);
+            }
+        }
+    }
+
+    //
+    // BorderBreaker Logic
+    //
+    Settings {
+        id: bbSettings
+        category: "BorderBreaker"
+        property int aspectMode: 0 // 0: Auto, 1: Fit, 2: Fill, 3: Stretch, 4: Original, 5: 21:9, 6: 32:9
+        property bool autoDetect: true
+        property bool showOverlay: true
+    }
+
+    Item {
+        id: borderBreaker
+        
+        property var modes: ["Auto", "Fit to Screen", "Fill (Crop)", "Stretch", "Original", "21:9 Ultrawide", "32:9 Super Ultrawide"]
+        property var modeRatios: [0, 0, -1, -1, -1, 2.333, 3.555] // -1 means special handling
+        
+        function cycleAspect() {
+            bbSettings.aspectMode = (bbSettings.aspectMode + 1) % modes.length;
+            applyAspect();
+            showOSD(modes[bbSettings.aspectMode]);
+        }
+
+        function applyAspect() {
+            var mode = bbSettings.aspectMode;
+            var ratio = modeRatios[mode];
+
+            // Reset first
+            mpv.setProperty("panscan", 0.0);
+            mpv.setProperty("video-aspect-override", -1);
+
+            if (mode === 0) { // Auto
+                // Logic handled in checkAutoDetect, but we trigger it here if video is playing
+                var params = mpv.getProperty("video-out-params");
+                if (params) checkAutoDetect(params);
+            } else if (mode === 1) { // Fit to Screen
+                // Default behavior usually
+            } else if (mode === 2) { // Fill (Crop)
+                mpv.setProperty("panscan", 1.0);
+            } else if (mode === 3) { // Stretch
+                mpv.setProperty("video-aspect-override", Screen.width / Screen.height);
+            } else if (mode === 4) { // Original
+                mpv.setProperty("video-aspect-override", -1);
+            } else if (mode >= 5) { // Custom Ratios
+                mpv.setProperty("video-aspect-override", ratio);
+                // Also maybe crop if needed? Usually aspect override is enough for ultrawide content on 16:9 or vice versa
+                // But for "Ultrawide" on 16:9 screen, we want letterbox (default).
+                // For 16:9 content on Ultrawide screen, we want to CROP (Fill) usually?
+                // Let's assume "Ultrawide" mode means "Force this aspect ratio"
+            }
+        }
+
+        function checkAutoDetect(params) {
+            if (bbSettings.aspectMode !== 0) return; // Only if Auto is selected
+
+            if (!params || !params.dw || !params.dh) return;
+
+            var videoRatio = params.dw / params.dh;
+            var screenRatio = Screen.width / Screen.height;
+            var ratioDiff = Math.abs(videoRatio - screenRatio);
+            var tolerance = 0.05; // 5% tolerance for "close enough"
+
+            // Reset first
+            mpv.setProperty("panscan", 0.0);
+            mpv.setProperty("video-aspect-override", -1);
+
+            // CASE 1: Ratios match (or very close) - Perfect fit, no adjustments needed
+            if (ratioDiff < tolerance) {
+                // Already reset above, nothing more to do
+                return;
+            }
+
+            // CASE 2: Video is NARROWER than screen (e.g., 16:9 video on 21:9 screen)
+            // This creates pillarboxing (black bars on sides) - CROP to fill
+            if (videoRatio < screenRatio) {
+                // Auto-crop to fill the screen on ultrawide monitors
+                mpv.setProperty("panscan", 1.0);
+                return;
+            }
+
+            // CASE 3: Video is WIDER than screen (e.g., 21:9 video on 16:9 screen)
+            // This creates letterboxing (black bars top/bottom)
+            // Keep letterbox by default (safer, preserves all content)
+            // User can manually switch to Fill mode if they want to crop
+            
+            // Already reset above, so letterbox is the default behavior
+        }
+
+        function showOSD(text) {
+            if (!bbSettings.showOverlay) return;
+            osdText.text = text;
+            osdContainer.opacity = 1.0;
+            osdTimer.restart();
+        }
+    }
+
+    Rectangle {
+        id: osdContainer
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.topMargin: 100
+        width: osdText.width + 40
+        height: 50
+        radius: 25
+        color: "#AA000000"
+        opacity: 0.0
+        visible: opacity > 0
+
+        Behavior on opacity { NumberAnimation { duration: 300 } }
+
+        Text {
+            id: osdText
+            anchors.centerIn: parent
+            color: "white"
+            font.pixelSize: 20
+            font.bold: true
+        }
+
+        Timer {
+            id: osdTimer
+            interval: 2000
+            onTriggered: osdContainer.opacity = 0.0
+        }
+    }
+
+    Shortcut {
+        sequence: "A"
+        onActivated: borderBreaker.cycleAspect()
+    }
+    
+    Shortcut {
+        sequence: "Ctrl+Shift+U"
+        onActivated: {
+             // Quick toggle for Ultrawide Fill
+             bbSettings.aspectMode = 2; // Fill
+             borderBreaker.applyAspect();
+             borderBreaker.showOSD("Fill (Crop)");
+        }
     }
 
     //
