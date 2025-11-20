@@ -35,11 +35,16 @@ jobs:
     - name: Install OpenSSL
       run: choco install openssl -y
       
+    - name: Verify OpenSSL installation
+      shell: pwsh
+      run: |
+        Get-ChildItem "C:\Program Files" | Where-Object { $_.Name -like "*OpenSSL*" }
+        
     - name: Set OpenSSL environment variables
       shell: pwsh
       run: |
-        echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL" >> $env:GITHUB_ENV
-        echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL\include" >> $env:GITHUB_ENV
+        echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
+        echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
     
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
