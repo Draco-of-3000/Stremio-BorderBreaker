@@ -1,0 +1,82 @@
+name: Windows Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '14.15.0'
+    
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '5.15.2'
+        host: 'windows'
+        target: 'desktop'
+        arch: 'win64_msvc2019_64'
+        modules: 'qtwebengine qtwebchannel'
+        cache: true
+    
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+    
+    - name: Download dependencies
+      shell: pwsh
+      run: |
+        # Download server.js
+        $serverUrl = Get-Content -Path ./server-url.txt
+        Invoke-WebRequest -Uri $serverUrl -OutFile ./server.js
+        
+        # Create dist-win directory
+        New-Item -ItemType Directory -Force -Path dist-win
+    
+    - name: Build with CMake
+      shell: pwsh
+      run: |
+        mkdir build
+        cd build
+        cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+        cmake --build .
+    
+    - name: Copy dependencies
+      shell: pwsh
+      run: |
+        # Copy built files
+        Copy-Item build/*.exe dist-win/
+        Copy-Item build/*.dll dist-win/
+        
+        # Copy server.js
+        Copy-Item server.js dist-win/
+        
+        # Copy Windows dependencies
+        Copy-Item windows/*.dll dist-win/
+        Copy-Item windows/*.exe dist-win/
+    
+    - name: Deploy Qt dependencies
+      shell: pwsh
+      run: |
+        windeployqt --release --no-compiler-runtime --qmldir=. ./dist-win/stremio.exe
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Stremio-BorderBreaker-Windows
+        path: dist-win/
+        retention-days: 30
