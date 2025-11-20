@@ -81,26 +81,69 @@ jobs:
     
     - name: Copy dependencies
       shell: pwsh
-      run: |
-        # Copy built files
-        Copy-Item build/*.exe dist-win/
-        Copy-Item build/*.dll dist-win/
+      run: |\n        # Create dist-win directory
+        New-Item -ItemType Directory -Force -Path dist-win
+        
+        # Copy built executable
+        Copy-Item build/stremio.exe dist-win/
+        
+        # Copy OpenSSL DLLs
+        Copy-Item "$env:OPENSSL_ROOT_DIR/bin/*.dll" dist-win/
+        
+        # Copy Windows dependencies (MPV, FFmpeg, etc.)
+        Copy-Item windows/*.dll dist-win/
+        Copy-Item windows/*.exe dist-win/
+        
+        # Copy DS (Desktop Search) files
+        Copy-Item windows/DS/DS.exe dist-win/
+        Copy-Item windows/DS/Microsoft.Search.Interop.dll dist-win/
+        
+        # Copy VCRedist DLLs (from MSVC installation)
+        $vcredistPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Redist\MSVC"
+        $vcredistVersion = Get-ChildItem $vcredistPath | Sort-Object Name -Descending | Select-Object -First 1
+        $vcredistDlls = "$vcredistPath\$($vcredistVersion.Name)\x64\Microsoft.VC143.CRT"
+        Copy-Item "$vcredistDlls\msvcp140.dll" dist-win/ -ErrorAction SilentlyContinue
+        Copy-Item "$vcredistDlls\msvcp140_1.dll" dist-win/ -ErrorAction SilentlyContinue
+        Copy-Item "$vcredistDlls\vccorlib140.dll" dist-win/ -ErrorAction SilentlyContinue
+        Copy-Item "$vcredistDlls\vcruntime140.dll" dist-win/ -ErrorAction SilentlyContinue
+        
+        # Generate stremio-runtime.exe
+        & windows/generate_stremio-runtime.cmd dist-win
         
         # Copy server.js
         Copy-Item server.js dist-win/
-        
-        # Copy Windows dependencies
-        Copy-Item windows/*.dll dist-win/
-        Copy-Item windows/*.exe dist-win/
     
     - name: Deploy Qt dependencies
       shell: pwsh
       run: |
         windeployqt --release --no-compiler-runtime --qmldir=. ./dist-win/stremio.exe
     
-    - name: Upload artifact
+    - name: Install NSIS
+      run: choco install nsis -y
+    
+    - name: Build installer
+      shell: pwsh
+      run: |
+        # Set version for installer
+        $env:package_version = "4.4.169-borderbreaker"
+        
+        # Build NSIS installer
+        & "C:\Program Files (x86)\NSIS\makensis.exe" /V2 ./windows/installer/windows-installer.nsi
+        
+        # Create ZIP archive as well
+        Compress-Archive -Path .\dist-win\* -DestinationPath "Stremio-BorderBreaker-$env:package_version.zip"
+    
+    - name: Upload installer
       uses: actions/upload-artifact@v4
       with:
-        name: Stremio-BorderBreaker-Windows
-        path: dist-win/
+        name: Stremio-BorderBreaker-Installer
+        path: "*.exe"
         retention-days: 30
+    
+    - name: Upload ZIP
+      uses: actions/upload-artifact@v4
+      with:
+        name: Stremio-BorderBreaker-Portable
+        path: "*.zip"
+        retention-days: 30
+
