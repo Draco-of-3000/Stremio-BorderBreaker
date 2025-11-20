@@ -37,7 +37,12 @@ if(WIN32)
   list(APPEND SOURCES stremio.rc)
   set(QT_DEFAULT_MAJOR_VERSION 5)
   set(ENV{Qt5_DIR} $ENV{QTDIR})
-  set(MPV_LIBRARY_mpv ${CMAKE_CURRENT_SOURCE_DIR}/deps/libmpv/win32/mpv.lib)
+  # Use 64-bit or 32-bit mpv library based on architecture
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(MPV_LIBRARY_mpv ${CMAKE_CURRENT_SOURCE_DIR}/deps/libmpv/win32-x64/mpv.lib)
+  else()
+    set(MPV_LIBRARY_mpv ${CMAKE_CURRENT_SOURCE_DIR}/deps/libmpv/win32/mpv.lib)
+  endif()
 endif()
 
 if(APPLE)
