@@ -68,8 +68,8 @@ jobs:
         $serverUrl = Get-Content -Path ./server-url.txt
         Invoke-WebRequest -Uri $serverUrl -OutFile ./server.js
         
-        # Create dist-win directory
-        New-Item -ItemType Directory -Force -Path dist-win
+        # Download rcedit (needed for stremio-runtime generation)
+        Invoke-WebRequest -Uri "https://github.com/electron/rcedit/releases/download/v1.1.1/rcedit-x86.exe" -OutFile ./rcedit-x86.exe
     
     - name: Build with CMake
       shell: pwsh
