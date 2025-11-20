@@ -82,7 +82,14 @@ test_script:
       echo "Listing C:\Qt structure:"
       if (Test-Path "C:\Qt") { Get-ChildItem "C:\Qt" } else { echo "C:\Qt does not exist" }
       if (Test-Path "C:\Qt\5.15.2") { Get-ChildItem "C:\Qt\5.15.2" }
-      if (Test-Path "C:\Qt\5.15.2\msvc2019") { Get-ChildItem "C:\Qt\5.15.2\msvc2019" }
+      if (Test-Path "C:\Qt\5.15.2\msvc2019") { 
+          echo "Listing C:\Qt\5.15.2\msvc2019:"
+          Get-ChildItem "C:\Qt\5.15.2\msvc2019" 
+          if (Test-Path "C:\Qt\5.15.2\msvc2019\bin") {
+              echo "Listing C:\Qt\5.15.2\msvc2019\bin:"
+              Get-ChildItem "C:\Qt\5.15.2\msvc2019\bin"
+          }
+      }
   - ps: |
       mkdir release
       pushd release
