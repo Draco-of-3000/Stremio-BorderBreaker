@@ -47,7 +47,7 @@ install:
   - if %compiler%==msvc2019 set VCREDIST_BIN_PATH=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Redist\MSVC\14.16.27012\x86\Microsoft.VC141.CRT
   - if %compiler%==msvc2019_64 set VCREDIST_BIN_PATH=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Redist\MSVC\14.16.27012\x64\Microsoft.VC141.CRT
 
-  - set QTDIR=C:\Qt\6.5.3\msvc2019_64
+  - set QTDIR=C:\Qt\5.15.2\msvc2019_64
   - set VSCDIR=C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC
   - set NSISDIR=C:\Program Files (x86)\NSIS
   - set PATH=%PATH%;%QTDIR%\bin;%VSCDIR%\bin;%NSISDIR%
@@ -56,6 +56,11 @@ install:
   - move windows\NsProcess\Include\nsProcess.nsh "%NSISDIR%\Include"
   - move windows\NsProcess\Plugin\x86-ansi\nsProcess.dll "%NSISDIR%\Plugins\x86-ansi"
   - move windows\NsProcess\Plugin\x86-unicode\nsProcess.dll "%NSISDIR%\Plugins\x86-unicode"
+  
+  # Install Qt 5.15.2 (not available by default on AppVeyor anymore)
+  - ps: |
+      pip install aqtinstall
+      python -m aqt install-qt windows desktop 5.15.2 win64_msvc2019_64 -O C:\Qt
   
   # Prepare the environment by installing Node and setting VC utils in the PATH
   - ps: Install-Product node $env:nodejs_version x86
@@ -81,19 +86,19 @@ test_script:
   - ps: |
       echo "Listing C:\Qt structure:"
       if (Test-Path "C:\Qt") { Get-ChildItem "C:\Qt" } else { echo "C:\Qt does not exist" }
-      if (Test-Path "C:\Qt\6.5.3") { Get-ChildItem "C:\Qt\6.5.3" }
-      if (Test-Path "C:\Qt\6.5.3\msvc2019_64") { 
-          echo "Listing C:\Qt\6.5.3\msvc2019_64:"
-          Get-ChildItem "C:\Qt\6.5.3\msvc2019_64" 
-          if (Test-Path "C:\Qt\6.5.3\msvc2019_64\bin") {
-              echo "Listing C:\Qt\6.5.3\msvc2019_64\bin:"
-              Get-ChildItem "C:\Qt\6.5.3\msvc2019_64\bin"
+      if (Test-Path "C:\Qt\5.15.2") { Get-ChildItem "C:\Qt\5.15.2" }
+      if (Test-Path "C:\Qt\5.15.2\msvc2019_64") { 
+          echo "Listing C:\Qt\5.15.2\msvc2019_64:"
+          Get-ChildItem "C:\Qt\5.15.2\msvc2019_64" 
+          if (Test-Path "C:\Qt\5.15.2\msvc2019_64\bin") {
+              echo "Listing C:\Qt\5.15.2\msvc2019_64\bin:"
+              Get-ChildItem "C:\Qt\5.15.2\msvc2019_64\bin"
           }
       }
   - ps: |
       mkdir release
       pushd release
-      $env:CMAKE_PREFIX_PATH = "C:\Qt\6.5.3\msvc2019_64"
+      $env:CMAKE_PREFIX_PATH = "C:\Qt\5.15.2\msvc2019_64"
       cmake -G"NMake Makefiles" -DCMAKE_BUILD_TYPE=Release ..
       cmake --build .
       popd
@@ -135,7 +140,7 @@ test_script:
 
   # prepare-windows-qt
   - ps: |
-      $windeployqt = "C:\Qt\6.5.3\msvc2019_64\bin\windeployqt.exe"
+      $windeployqt = "C:\Qt\5.15.2\msvc2019_64\bin\windeployqt.exe"
       & $windeployqt --release --no-compiler-runtime --qmldir=. ./dist-win/stremio.exe
 
   # sign-windows-files
