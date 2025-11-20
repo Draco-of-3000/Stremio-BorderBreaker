@@ -121,7 +121,7 @@ test_script:
   - ps: if (!$mpvExists) { throw 'mpv-1.dll does not exist' }
 
   # prepare-windows-qt
-  - set PATH=%PATH%;C:\\Qt\\5.15.2\\msvc2019\\bin
+  - ps: $env:PATH += ";C:\Qt\5.15.2\msvc2019\bin"
   - windeployqt --release --no-compiler-runtime --qmldir=. ./dist-win/stremio.exe
 
   # sign-windows-files
