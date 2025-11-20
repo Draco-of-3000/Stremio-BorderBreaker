@@ -28,14 +28,14 @@ jobs:
         version: '5.15.2'
         host: 'windows'
         target: 'desktop'
-        arch: 'win64_msvc2019_64'
+        arch: 'win32_msvc2019'
         modules: 'qtwebengine'
         cache: true
     
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
       with:
-        arch: x64
+        arch: x86
     
     - name: Download dependencies
       shell: pwsh
