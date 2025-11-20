@@ -59,8 +59,8 @@ install:
   
   # Install Qt 5.15.2 (not available by default on AppVeyor anymore)
   - ps: |
-      pip install aqtinstall
-      python -m aqt install-qt windows desktop 5.15.2 win64_msvc2019_64 -O C:\Qt
+      pip install aqtinstall 2>&1 | Out-Null
+      python -m aqt install-qt windows desktop 5.15.2 win64_msvc2019_64 -O C:\Qt 2>&1 | Write-Host
   
   # Prepare the environment by installing Node and setting VC utils in the PATH
   - ps: Install-Product node $env:nodejs_version x86
