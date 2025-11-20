@@ -28,28 +28,38 @@ jobs:
         version: '5.15.2'
         host: 'windows'
         target: 'desktop'
-        arch: 'win32_msvc2019'
+        arch: 'win64_msvc2019_64'
         modules: 'qtwebengine'
         cache: true
     
     - name: Install OpenSSL
       run: choco install openssl -y
       
-    - name: Verify OpenSSL installation
+    - name: Verify and export OpenSSL paths
       shell: pwsh
       run: |
-        Get-ChildItem "C:\Program Files" | Where-Object { $_.Name -like "*OpenSSL*" }
-        
-    - name: Set OpenSSL environment variables
-      shell: pwsh
-      run: |
-        echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
-        echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
+        Write-Host "Looking for OpenSSL under common Program Files locations..."
+        $candidates = @("C:\Program Files\OpenSSL-Win64","C:\Program Files (x86)\OpenSSL-Win64","C:\OpenSSL-Win64","C:\Program Files\OpenSSL","C:\OpenSSL")
+        $found = $null
+        foreach ($p in $candidates) {
+          if (Test-Path $p) { $found = $p; break }
+        }
+        if (-not $found) {
+          $found = Get-ChildItem "C:\Program Files" -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'OpenSSL' } | Select-Object -First 1 | ForEach-Object { $_.FullName }
+        }
+        if (-not $found) {
+          Write-Error "OpenSSL installation not found. Inspect the runner or the choco install output."
+          exit 1
+        }
+        Write-Host "OpenSSL found at: $found"
+        echo "OPENSSL_ROOT_DIR=$found" >> $env:GITHUB_ENV
+        echo "OPENSSL_INCLUDE_DIR=$found\include" >> $env:GITHUB_ENV
+        echo "OPENSSL_LIB_DIR=$found\lib" >> $env:GITHUB_ENV
     
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
       with:
-        arch: x86
+        arch: x64
     
     - name: Download dependencies
       shell: pwsh
@@ -66,7 +76,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64" -DOPENSSL_INCLUDE_DIR="C:/Program Files/OpenSSL-Win64/include" ..
+        cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DOPENSSL_ROOT_DIR="$env:OPENSSL_ROOT_DIR" -DOPENSSL_INCLUDE_DIR="$env:OPENSSL_INCLUDE_DIR" -DOPENSSL_LIB_DIR="$env:OPENSSL_LIB_DIR" ..
         cmake --build .
     
     - name: Copy dependencies
