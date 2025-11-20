@@ -81,7 +81,8 @@ jobs:
     
     - name: Copy dependencies
       shell: pwsh
-      run: |\n        # Create dist-win directory
+      run: |
+        # Create dist-win directory
         New-Item -ItemType Directory -Force -Path dist-win
         
         # Copy built executable
