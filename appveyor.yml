@@ -79,6 +79,11 @@ test_script:
   # Manually add a path to RC.exe
   - set PATH=C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.18362.0\\x86\\;%PATH%
   - ps: |
+      echo "Listing C:\Qt structure:"
+      if (Test-Path "C:\Qt") { Get-ChildItem "C:\Qt" } else { echo "C:\Qt does not exist" }
+      if (Test-Path "C:\Qt\5.15.2") { Get-ChildItem "C:\Qt\5.15.2" }
+      if (Test-Path "C:\Qt\5.15.2\msvc2019") { Get-ChildItem "C:\Qt\5.15.2\msvc2019" }
+  - ps: |
       mkdir release
       pushd release
       $env:CMAKE_PREFIX_PATH = "C:\Qt\5.15.2\msvc2019"
