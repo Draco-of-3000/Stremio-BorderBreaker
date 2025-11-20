@@ -47,7 +47,7 @@ install:
   - if %compiler%==msvc2019 set VCREDIST_BIN_PATH=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Redist\MSVC\14.16.27012\x86\Microsoft.VC141.CRT
   - if %compiler%==msvc2019_64 set VCREDIST_BIN_PATH=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Redist\MSVC\14.16.27012\x64\Microsoft.VC141.CRT
 
-  - set QTDIR=C:\Qt\5.15.2\msvc2019
+  - set QTDIR=C:\Qt\6.5.3\msvc2019
   - set VSCDIR=C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC
   - set NSISDIR=C:\Program Files (x86)\NSIS
   - set PATH=%PATH%;%QTDIR%\bin;%VSCDIR%\bin;%NSISDIR%
@@ -81,19 +81,19 @@ test_script:
   - ps: |
       echo "Listing C:\Qt structure:"
       if (Test-Path "C:\Qt") { Get-ChildItem "C:\Qt" } else { echo "C:\Qt does not exist" }
-      if (Test-Path "C:\Qt\5.15.2") { Get-ChildItem "C:\Qt\5.15.2" }
-      if (Test-Path "C:\Qt\5.15.2\msvc2019") { 
-          echo "Listing C:\Qt\5.15.2\msvc2019:"
-          Get-ChildItem "C:\Qt\5.15.2\msvc2019" 
-          if (Test-Path "C:\Qt\5.15.2\msvc2019\bin") {
-              echo "Listing C:\Qt\5.15.2\msvc2019\bin:"
-              Get-ChildItem "C:\Qt\5.15.2\msvc2019\bin"
+      if (Test-Path "C:\Qt\6.5.3") { Get-ChildItem "C:\Qt\6.5.3" }
+      if (Test-Path "C:\Qt\6.5.3\msvc2019") { 
+          echo "Listing C:\Qt\6.5.3\msvc2019:"
+          Get-ChildItem "C:\Qt\6.5.3\msvc2019" 
+          if (Test-Path "C:\Qt\6.5.3\msvc2019\bin") {
+              echo "Listing C:\Qt\6.5.3\msvc2019\bin:"
+              Get-ChildItem "C:\Qt\6.5.3\msvc2019\bin"
           }
       }
   - ps: |
       mkdir release
       pushd release
-      $env:CMAKE_PREFIX_PATH = "C:\Qt\5.15.2\msvc2019"
+      $env:CMAKE_PREFIX_PATH = "C:\Qt\6.5.3\msvc2019"
       cmake -G"NMake Makefiles" -DCMAKE_BUILD_TYPE=Release ..
       cmake --build .
       popd
@@ -135,7 +135,7 @@ test_script:
 
   # prepare-windows-qt
   - ps: |
-      $windeployqt = "C:\Qt\5.15.2\msvc2019\bin\windeployqt.exe"
+      $windeployqt = "C:\Qt\6.5.3\msvc2019\bin\windeployqt.exe"
       & $windeployqt --release --no-compiler-runtime --qmldir=. ./dist-win/stremio.exe
 
   # sign-windows-files
