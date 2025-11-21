@@ -81,8 +81,8 @@ jobs:
           "NODE_EXE=$node" >> $env:GITHUB_ENV
 
       - name: Download mpv runtime
-      shell: pwsh
-      run: |
+        shell: pwsh
+        run: |
           $mpvUrls = @(
             "https://downloads.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251116-git-701201b.7z?viasf=1",
             "https://downloads.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251026-git-aa2dad0.7z?viasf=1"
@@ -122,8 +122,8 @@ jobs:
           "MPV_DLL_PATH=$($dllPath.FullName)" >> $env:GITHUB_ENV
 
       - name: Download FFmpeg shared build
-      shell: pwsh
-      run: |
+        shell: pwsh
+        run: |
           $ffmpegUrls = @(
             "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.7z",
             "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.7z"
@@ -150,8 +150,8 @@ jobs:
           "FFMPEG_BIN_PATH=$($ffmpegRoot.FullName)\bin" >> $env:GITHUB_ENV
 
       - name: Configure and build
-      shell: pwsh
-      run: |
+        shell: pwsh
+        run: |
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
           if (-not $vsPath) { throw "Visual Studio installation not found" }
           $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
@@ -159,8 +159,8 @@ jobs:
           cmd.exe /c $cmd
 
       - name: Package Windows artifacts
-      shell: pwsh
-      run: |
+        shell: pwsh
+        run: |
           $ErrorActionPreference = "Stop"
           $dist = Join-Path $PWD "dist-win"
           if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
@@ -199,8 +199,8 @@ jobs:
           Compress-Archive -Path "$dist\*" -DestinationPath "Stremio $env:PACKAGE_VERSION.zip" -Force
 
       - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
+        uses: actions/upload-artifact@v4
+        with:
           name: stremio-windows
           path: |
             Stremio ${{ env.PACKAGE_VERSION }}.zip
@@ -218,7 +218,7 @@ jobs:
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v1
-      with:
+        with:
           tag_name: ${{ github.ref_name }}
           name: Stremio ${{ needs.build.outputs.package_version }}
           files: |
