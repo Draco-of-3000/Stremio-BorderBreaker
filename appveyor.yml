@@ -80,8 +80,8 @@ install:
   - ps: |
       $repo = $env:APPVEYOR_BUILD_FOLDER
       $mpvUrls = @(
-        "https://github.com/hooke007/MPV_lazy/releases/download/2024-02-18/mpv-dev-x86_64-20240218-git-a6f65f7.7z",
-        "https://github.com/eko5624/MPV-release/releases/download/2024-02-18/mpv-dev-x86_64-20240218-git-a6f65f7.7z"
+        "https://liquidtelecom.dl.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251116-git-701201b.7z?viasf=1",
+        "https://pilotfiber.dl.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251116-git-701201b.7z?viasf=1"
       )
       $downloaded = $false
       foreach ($url in $mpvUrls) {
