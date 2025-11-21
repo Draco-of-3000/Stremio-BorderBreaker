@@ -55,6 +55,8 @@ int main(int argc, char **argv)
     chromiumFlags.append("--autoplay-policy=no-user-gesture-required");
     #ifdef _WIN32
     chromiumFlags.append(" --use-angle=d3d11 --ignore-gpu-blacklist");
+    qputenv("QT_OPENGL", "angle");
+    qputenv("QT_ANGLE_PLATFORM", "d3d11");
     // Default to ANGLE (DirectX), because that seems to eliminate so many issues on Windows
     // Also, according to the docs here: https://wiki.qt.io/Qt_5_on_Windows_ANGLE_and_OpenGL, ANGLE is also preferrable
     // We do not need advanced OpenGL features but we need more universal support
