@@ -79,8 +79,8 @@ install:
   # Download mpv (x64)
   - ps: |
       $mpvUrls = @(
-        "https://liquidtelecom.dl.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251116-git-701201b.7z?viasf=1",
-        "https://pilotfiber.dl.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251116-git-701201b.7z?viasf=1"
+        "https://downloads.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251116-git-701201b.7z?viasf=1",
+        "https://downloads.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251026-git-aa2dad0.7z?viasf=1"
       )
       $downloaded = $false
       foreach ($url in $mpvUrls) {
