@@ -54,6 +54,11 @@ install:
         python -m pip install --upgrade pip
         python -m pip install aqtinstall
         python -m aqt install-qt windows desktop 5.15.2 win32_msvc2019 -O C:\Qt
+        $qmakePath = Join-Path $qtDir "bin\qmake.exe"
+        if (-not (Test-Path $qmakePath)) {
+          throw "Qt installation failed; qmake not found at $qmakePath (exit code $LASTEXITCODE)"
+        }
+        $global:LASTEXITCODE = 0
       } else {
         Write-Host "Qt already present at $qtDir"
       }
