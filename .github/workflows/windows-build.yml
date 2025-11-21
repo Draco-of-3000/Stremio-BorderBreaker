@@ -59,6 +59,7 @@ jobs:
           Copy-Item -Path "windows\NsProcess\Include\nsProcess.nsh" -Destination "C:\Program Files (x86)\NSIS\Include" -Force
           Copy-Item -Path "windows\NsProcess\Plugin\x86-ansi\nsProcess.dll" -Destination "C:\Program Files (x86)\NSIS\Plugins\x86-ansi" -Force
           Copy-Item -Path "windows\NsProcess\Plugin\x86-unicode\nsProcess.dll" -Destination "C:\Program Files (x86)\NSIS\Plugins\x86-unicode" -Force
+          Invoke-WebRequest -Uri "https://github.com/electron/rcedit/releases/download/v1.1.1/rcedit-x86.exe" -OutFile rcedit-x86.exe
 
       - name: Install OpenSSL
         shell: pwsh
@@ -175,7 +176,7 @@ jobs:
 
           & windows\generate_stremio-runtime.cmd $dist
 
-          $serverUrl = Get-Content .\server-url.txt -Raw
+          $serverUrl = (Get-Content .\server-url.txt -Raw).Trim()
           $serverDest = Join-Path $dist "server.js"
           Write-Host "Downloading server.js from $serverUrl"
           curl.exe -L --retry 5 --retry-delay 5 -o "$serverDest" "$serverUrl"
