@@ -79,40 +79,82 @@ jobs:
         cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DOPENSSL_ROOT_DIR="$env:OPENSSL_ROOT_DIR" -DOPENSSL_INCLUDE_DIR="$env:OPENSSL_INCLUDE_DIR" -DOPENSSL_LIB_DIR="$env:OPENSSL_LIB_DIR" ..
         cmake --build .
     
-    - name: Copy dependencies
+    - name: Prepare dist-win directory
       shell: pwsh
       run: |
         # Create dist-win directory
         New-Item -ItemType Directory -Force -Path dist-win
         
-        # Copy built executable
-        Copy-Item build/stremio.exe dist-win/
-        
         # Copy OpenSSL DLLs
-        Copy-Item "$env:OPENSSL_ROOT_DIR/bin/*.dll" dist-win/
+        Copy-Item "$env:OPENSSL_ROOT_DIR\bin\*.dll" dist-win\ -ErrorAction SilentlyContinue
         
-        # Copy Windows dependencies (MPV, FFmpeg, etc.)
-        Copy-Item windows/*.dll dist-win/
-        Copy-Item windows/*.exe dist-win/
+        # Copy FFmpeg and FFprobe executables
+        Copy-Item windows\ffmpeg.exe dist-win\
+        Copy-Item windows\ffprobe.exe dist-win\
+        
+        # Copy MPV and FFmpeg DLLs
+        Copy-Item windows\*.dll dist-win\
         
         # Copy DS (Desktop Search) files
-        Copy-Item windows/DS/DS.exe dist-win/
-        Copy-Item windows/DS/Microsoft.Search.Interop.dll dist-win/
+        Copy-Item windows\DS\DS.exe dist-win\
+        Copy-Item windows\DS\Microsoft.Search.Interop.dll dist-win\
         
-        # Copy VCRedist DLLs (from MSVC installation)
+        # Copy VCRedist DLLs
         $vcredistPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Redist\MSVC"
         $vcredistVersion = Get-ChildItem $vcredistPath | Sort-Object Name -Descending | Select-Object -First 1
         $vcredistDlls = "$vcredistPath\$($vcredistVersion.Name)\x64\Microsoft.VC143.CRT"
-        Copy-Item "$vcredistDlls\msvcp140.dll" dist-win/ -ErrorAction SilentlyContinue
-        Copy-Item "$vcredistDlls\msvcp140_1.dll" dist-win/ -ErrorAction SilentlyContinue
-        Copy-Item "$vcredistDlls\vccorlib140.dll" dist-win/ -ErrorAction SilentlyContinue
-        Copy-Item "$vcredistDlls\vcruntime140.dll" dist-win/ -ErrorAction SilentlyContinue
+        Copy-Item "$vcredistDlls\msvcp140.dll" dist-win\ -ErrorAction SilentlyContinue
+        Copy-Item "$vcredistDlls\msvcp140_1.dll" dist-win\ -ErrorAction SilentlyContinue
+        Copy-Item "$vcredistDlls\vccorlib140.dll" dist-win\ -ErrorAction SilentlyContinue
+        Copy-Item "$vcredistDlls\vcruntime140.dll" dist-win\ -ErrorAction SilentlyContinue
         
-        # Generate stremio-runtime.exe
-        & windows/generate_stremio-runtime.cmd dist-win
+        # Copy built Qt shell files
+        Copy-Item build\*.dll dist-win\ -ErrorAction SilentlyContinue
+        Copy-Item build\stremio.exe dist-win\
         
         # Copy server.js
-        Copy-Item server.js dist-win/
+        Copy-Item server.js dist-win\
+    
+    - name: Generate stremio-runtime.exe
+      shell: cmd
+      run: |
+        REM Set Node.js path for the script
+        set "NODE_PATH=C:\Program Files\nodejs\node.exe"
+        
+        REM Create a temporary batch file that sets the correct Node path
+        echo @echo off > temp_generate.cmd
+        echo set "node=C:\Program Files\nodejs\node.exe" >> temp_generate.cmd
+        echo set "rt_path=%%~dpf1" >> temp_generate.cmd
+        echo set rt_exe="%%rt_path%%\stremio-runtime.exe" >> temp_generate.cmd
+        echo pushd %%~dp0 >> temp_generate.cmd
+        echo set rcedit="%%cd%%\..\rcedit-x86.exe" >> temp_generate.cmd
+        echo pushd ..\images >> temp_generate.cmd
+        echo set rt_icon="%%cd%%\stremio_gray.ico" >> temp_generate.cmd
+        echo popd >> temp_generate.cmd
+        echo popd >> temp_generate.cmd
+        echo if not exist %%rcedit%% goto :norcedit >> temp_generate.cmd
+        echo if not exist %%node%% goto :nonode >> temp_generate.cmd
+        echo if not exist %%rt_icon%% goto :noico >> temp_generate.cmd
+        echo if not exist "%%rt_path%%\" goto :nodir >> temp_generate.cmd
+        echo copy %%node%% "%%rt_exe%%" >> temp_generate.cmd
+        echo %%rcedit%% %%rt_exe%% --set-icon %%rt_icon%% --set-version-string "ProductName" "StremioRuntime" --set-version-string "FileDescription" "Stremio Server JavaScript Runtime" --set-version-string "OriginalFilename" "stremio-runtime.exe" --set-version-string "InternalName" "stremio-runtime" >> temp_generate.cmd
+        echo exit /b %%errorlevel%% >> temp_generate.cmd
+        echo :norcedit >> temp_generate.cmd
+        echo echo rcedit-x86.exe not found at %%rcedit%% >> temp_generate.cmd
+        echo exit /b 1 >> temp_generate.cmd
+        echo :nonode >> temp_generate.cmd
+        echo echo Node.exe not found at %%node%% >> temp_generate.cmd
+        echo exit /b 2 >> temp_generate.cmd
+        echo :noico >> temp_generate.cmd
+        echo echo Icon file not found at %%rt_icon%% >> temp_generate.cmd
+        echo exit /b 3 >> temp_generate.cmd
+        echo :nodir >> temp_generate.cmd
+        echo echo Destination directory does not exists at %%rt_path%% >> temp_generate.cmd
+        echo exit /b 4 >> temp_generate.cmd
+        
+        REM Run the script
+        cd windows
+        call ..\temp_generate.cmd ..\dist-win
     
     - name: Deploy Qt dependencies
       shell: pwsh
@@ -147,4 +189,5 @@ jobs:
         name: Stremio-BorderBreaker-Portable
         path: "*.zip"
         retention-days: 30
+
 
