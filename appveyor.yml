@@ -53,7 +53,7 @@ install:
         Write-Host "Qt 5.15.2 not found, installing via aqt..."
         python -m pip install --upgrade pip
         python -m pip install aqtinstall
-        python -m aqt install-qt windows desktop 5.15.2 win32_msvc2019 -O C:\Qt
+        python -m aqt install-qt windows desktop 5.15.2 win32_msvc2019 -O C:\Qt --modules qtwebengine qtwebchannel qtquickcontrols qtquickcontrols2 qtdeclarative
         $qmakePath = Join-Path $qtDir "bin\qmake.exe"
         if (-not (Test-Path $qmakePath)) {
           throw "Qt installation failed; qmake not found at $qmakePath (exit code $LASTEXITCODE)"
@@ -63,6 +63,7 @@ install:
         Write-Host "Qt already present at $qtDir"
       }
   - set QTDIR=C:\Qt\5.15.2\msvc2019
+  - set Qt5_DIR=%QTDIR%\lib\cmake\Qt5
   - set VSCDIR=C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC
   - set NSISDIR=C:\Program Files (x86)\NSIS
   - set PATH=%PATH%;%QTDIR%\bin;%VSCDIR%\bin;%NSISDIR%
