@@ -72,11 +72,28 @@ jobs:
         Invoke-WebRequest -Uri "https://github.com/electron/rcedit/releases/download/v1.1.1/rcedit-x86.exe" -OutFile ./rcedit-x86.exe
         
         # Download mpv-dev 64-bit (2021-12-26 build to match API ~1.108)
-        $mpvUrl = "https://sourceforge.net/projects/mpv-player-windows/files/64bit/mpv-dev-x86_64-20211226-git-029296f.7z/download"
-        Invoke-WebRequest -Uri $mpvUrl -OutFile mpv-dev.7z
+        $mpvUrl = "https://downloads.sourceforge.net/project/mpv-player-windows/64bit/mpv-dev-x86_64-20211226-git-029296f.7z"
+        $mpvArchive = Join-Path $PWD "mpv-dev.7z"
+        & curl.exe -L --retry 5 --retry-delay 5 --fail -o $mpvArchive $mpvUrl
+        if ($LASTEXITCODE -ne 0) {
+          throw "Failed to download mpv package from $mpvUrl"
+        }
         
-        # Extract mpv-dev to deps/libmpv (overwriting include and lib)
-        7z x mpv-dev.7z -odeps/libmpv -aoa
+        # Extract mpv-dev archive and update deps/libmpv contents
+        $mpvExtract = Join-Path $PWD "mpv-dev-extract"
+        Remove-Item $mpvExtract -Recurse -Force -ErrorAction SilentlyContinue
+        7z x $mpvArchive "-o$mpvExtract" -aoa | Out-Null
+        $mpvRoot = Get-ChildItem $mpvExtract | Where-Object { $_.PSIsContainer -and $_.Name -like "mpv-dev*" } | Select-Object -First 1
+        if (-not $mpvRoot) {
+          throw "mpv archive structure not recognized; contents: $(Get-ChildItem $mpvExtract | Select-Object -ExpandProperty Name -Join ', ')"
+        }
+        $mpvInclude = Join-Path $mpvRoot.FullName "include/mpv"
+        $mpvLibDir = Join-Path $mpvRoot.FullName "lib"
+        New-Item -ItemType Directory -Force -Path "deps/libmpv/include/mpv" | Out-Null
+        New-Item -ItemType Directory -Force -Path "deps/libmpv/win32-x64" | Out-Null
+        Copy-Item -Path (Join-Path $mpvInclude "*") -Destination "deps/libmpv/include/mpv" -Recurse -Force
+        Copy-Item -Path (Join-Path $mpvLibDir "mpv.lib") -Destination "deps/libmpv/win32-x64/mpv.lib" -Force
+        Copy-Item -Path (Join-Path $mpvRoot.FullName "mpv-1.dll") -Destination "deps/libmpv/mpv-1.dll" -Force
     
     - name: Build with CMake
       shell: pwsh

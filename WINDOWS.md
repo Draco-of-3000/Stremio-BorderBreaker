@@ -25,8 +25,8 @@ Download and install Microsoft Visual Studio Community 2017 from here https://vi
 
 Download and install QT 5.12.7 from here https://download.qt.io/archive/qt/5.12/5.12.7/qt-opensource-windows-x86-5.12.7.exe (I had to disconnect from the Internet in order to skip the account log in/registration). In the setup select QT version for **MSVC 2017 32 bit**. Also the **Qt WebEngine** component must be selected for installation.
 
-Download and install **Win32 OpenSSL v1.1.1** from https://slproweb.com/products/Win32OpenSSL.html
-The full version is required. The light version doesn't include all necessary files.
+Download and install **Win64 OpenSSL v3.x** from https://slproweb.com/products/Win32OpenSSL.html
+The full version is required. The light version doesn't include all necessary files. (If you still need a 32-bit build, install the Win32 variant separately.)
 
 Download Node.js from here https://nodejs.org/dist/v8.17.0/win-x86/node.exe
 
@@ -44,7 +44,7 @@ Clone the repository
 
 Add QT and OpenSSL to the system Path
 
-		set PATH=C:\Qt\Qt5.15.2\5.15.2\msvc2019\bin;C:\OpenSSL-Win32\bin;%PATH%
+		set PATH=C:\Qt\Qt5.15.2\5.15.2\msvc2019\bin;C:\OpenSSL-Win64\bin;%PATH%
 
 Setup the environment
 
@@ -69,7 +69,7 @@ Now create new folder where we will put the final product and copy there the req
 		copy windows\mpv-1.dll dist-win\
 		copy windows\DS\* dist-win\
 		copy server.js dist-win\
-		copy C:\OpenSSL-Win32\bin\libcrypto-1_1.dll dist-win\
+		copy C:\OpenSSL-Win64\bin\libcrypto-3-x64.dll dist-win\   (use libcrypto-1_1-x64.dll if you're still on OpenSSL 1.1)
 
 You need to also put the following previously downloaded files in the dist-win folder:
 
