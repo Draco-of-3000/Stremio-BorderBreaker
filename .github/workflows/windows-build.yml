@@ -175,6 +175,9 @@ jobs:
           Copy-Item "$env:OPENSSL_BIN_PATH\*.dll" $dist -Force
 
           & windows\generate_stremio-runtime.cmd $dist
+          if (-not (Test-Path (Join-Path $dist "stremio-runtime.exe"))) {
+            throw "stremio-runtime.exe was not generated."
+          }
 
           $serverUrl = (Get-Content .\server-url.txt -Raw).Trim()
           $serverDest = Join-Path $dist "server.js"
@@ -198,6 +201,8 @@ jobs:
           & $nsis windows\installer\windows-installer.nsi
 
           Compress-Archive -Path "$dist\*" -DestinationPath "Stremio $env:PACKAGE_VERSION.zip" -Force
+          Write-Host "dist-win contents:"
+          Get-ChildItem $dist
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
