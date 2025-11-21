@@ -79,7 +79,7 @@ install:
   # Download mpv (x64)
   - ps: |
       $repo = $env:APPVEYOR_BUILD_FOLDER
-      $mpvUrl = "https://downloads.sourceforge.net/project/mpv-player-windows/64bit/mpv-dev-x86_64-20211226-git-029296f.7z"
+      $mpvUrl = "https://github.com/hooke007/MPV_lazy/releases/download/2024-02-18/mpv-dev-x86_64-20240218-git-a6f65f7.7z"
       Invoke-WebRequest -Uri $mpvUrl -OutFile mpv-dev.7z
       7z x mpv-dev.7z -ompv -aoa | Out-Null
       $mpvRoot = Get-ChildItem .\mpv -Directory | Where-Object { $_.Name -like "mpv-dev*" } | Select-Object -First 1
