@@ -57,7 +57,7 @@ install:
         $addons = @('qtwebengine','qtwebchannel','qtquickcontrols','qtquickcontrols2','qtdeclarative')
         foreach ($addon in $addons) {
           Write-Host "Installing Qt addon $addon..."
-          python -m aqt install-addon windows desktop 5.15.2 win32_msvc2019 $addon -O C:\Qt
+          python -m aqt install-module windows desktop 5.15.2 win32_msvc2019 $addon -O C:\Qt
           if ($LASTEXITCODE -ne 0) {
             throw "Failed to install Qt addon $addon (exit code $LASTEXITCODE)"
           }
