@@ -47,27 +47,7 @@ install:
   - if %compiler%==msvc2019 set VCREDIST_BIN_PATH=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Redist\MSVC\14.16.27012\x86\Microsoft.VC141.CRT
   - if %compiler%==msvc2019_64 set VCREDIST_BIN_PATH=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Redist\MSVC\14.16.27012\x64\Microsoft.VC141.CRT
 
-  - ps: |
-      $qtDir = "C:\Qt\5.15.2\msvc2019"
-      if (-not (Test-Path (Join-Path $qtDir "bin\qmake.exe"))) {
-        Write-Host "Qt 5.15.2 not found, installing via aqt..."
-        python -m pip install --upgrade pip
-        python -m pip install aqtinstall
-        $archives = @('qtwebengine','qtwebchannel','qtquickcontrols','qtquickcontrols2','qtdeclarative')
-        python -m aqt install-qt windows desktop 5.15.2 win32_msvc2019 -O C:\Qt --archives ($archives -join ',') | Write-Host
-        if ($LASTEXITCODE -ne 0) {
-          throw "Qt installation failed (exit code $LASTEXITCODE)"
-        }
-        $qmakePath = Join-Path $qtDir "bin\qmake.exe"
-        if (-not (Test-Path $qmakePath)) {
-          throw "Qt installation failed; qmake not found at $qmakePath (exit code $LASTEXITCODE)"
-        }
-        $global:LASTEXITCODE = 0
-      } else {
-        Write-Host "Qt already present at $qtDir"
-      }
   - set QTDIR=C:\Qt\5.15.2\msvc2019
-  - set Qt5_DIR=%QTDIR%\lib\cmake\Qt5
   - set VSCDIR=C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC
   - set NSISDIR=C:\Program Files (x86)\NSIS
   - set PATH=%PATH%;%QTDIR%\bin;%VSCDIR%\bin;%NSISDIR%
@@ -141,13 +121,7 @@ test_script:
   - ps: if (!$mpvExists) { throw 'mpv-1.dll does not exist' }
 
   # prepare-windows-qt
-  - ps: |
-      $windeploy = Join-Path $env:QTDIR 'bin\windeployqt.exe'
-      if (-not (Test-Path $windeploy)) {
-        Get-ChildItem -Path C:\Qt -Recurse -Filter windeployqt.exe -ErrorAction SilentlyContinue | Select-Object FullName | Format-Table | Out-String | Write-Host
-        throw "windeployqt not found at $windeploy"
-      }
-      & $windeploy --release --no-compiler-runtime --qmldir=. ./dist-win/stremio.exe
+  - windeployqt --release --no-compiler-runtime --qmldir=. ./dist-win/stremio.exe
 
   # sign-windows-files
   #- if "%DEPLOY%" == "true" SignTool sign /f ./windows/smartcode-20211118-20241118.pfx /p %CERT_PASS%  ./dist-win/stremio.exe
