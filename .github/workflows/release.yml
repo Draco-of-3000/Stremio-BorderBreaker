@@ -1,0 +1,109 @@
+name: Release from AppVeyor
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  APPVEYOR_ACCOUNT: Draco-of-3000
+  APPVEYOR_PROJECT: stremio-borderbreaker
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Fetch AppVeyor build info
+        id: appveyor
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          api="https://ci.appveyor.com/api/projects/${APPVEYOR_ACCOUNT}/${APPVEYOR_PROJECT}/branch/${TAG_NAME}"
+          echo "Querying ${api}"
+          curl -fsSL "$api" -o build.json
+          status=$(jq -r '.build.status' build.json)
+          if [ "$status" != "success" ]; then
+            echo "AppVeyor build for tag ${TAG_NAME} is not successful (status=$status)"
+            cat build.json
+            exit 1
+          fi
+          buildVersion=$(jq -r '.build.buildVersion' build.json)
+          jobId=$(jq -r '.build.jobs[0].jobId' build.json)
+          echo "buildVersion=${buildVersion}" >> "$GITHUB_OUTPUT"
+          echo "jobId=${jobId}" >> "$GITHUB_OUTPUT"
+
+      - name: Download AppVeyor artifacts
+        env:
+          JOB_ID: ${{ steps.appveyor.outputs.jobId }}
+        run: |
+          curl -fsSL "https://ci.appveyor.com/api/buildjobs/${JOB_ID}/artifacts" -o artifacts.json
+          count=$(jq length artifacts.json)
+          if [ "$count" -eq 0 ]; then
+            echo "No artifacts found for job ${JOB_ID}"
+            cat artifacts.json
+            exit 1
+          fi
+          jq -r '.[] | @base64' artifacts.json | while read -r row; do
+            _jq() { echo "${row}" | base64 --decode | jq -r "${1}"; }
+            fileName=$(_jq '.fileName')
+            encodedFile=$(python3 - <<'PY'
+import urllib.parse,sys,os
+print(urllib.parse.quote(sys.argv[1]))
+PY
+"$fileName")
+            url="https://ci.appveyor.com/api/buildjobs/${JOB_ID}/artifacts/${encodedFile}"
+            echo "Downloading ${fileName}"
+            curl -fsSL "$url" -o "$fileName"
+          done
+
+      - name: Normalize artifact names
+        id: artifacts
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          version="${VERSION#v}"
+          zip_src=$(ls "Stremio "*.zip)
+          exe_src=$(ls "Stremio "*.exe)
+          zip_name="Stremio-${version}.zip"
+          exe_name="Stremio-${version}.exe"
+          mv "$zip_src" "$zip_name"
+          mv "$exe_src" "$exe_name"
+          echo "zip=$zip_name" >> "$GITHUB_OUTPUT"
+          echo "exe=$exe_name" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Stremio ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+      - name: Upload ZIP asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.artifacts.outputs.zip }}
+          asset_name: ${{ steps.artifacts.outputs.zip }}
+          asset_content_type: application/zip
+
+      - name: Upload installer asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.artifacts.outputs.exe }}
+          asset_name: ${{ steps.artifacts.outputs.exe }}
+          asset_content_type: application/vnd.microsoft.portable-executable
+

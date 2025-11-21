@@ -233,6 +233,7 @@ test_script:
 # Deploy artifacts to S3
 artifacts:
   - path: "*.zip"
+  - path: "Stremio *.exe"
 
 deploy:
   provider: S3
