@@ -80,55 +80,71 @@ jobs:
       - name: Download mpv runtime
         shell: pwsh
         run: |
-          $urls = @(
+          $mpvUrls = @(
             "https://downloads.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251116-git-701201b.7z?viasf=1",
             "https://downloads.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251026-git-aa2dad0.7z?viasf=1"
           )
           $downloaded = $false
-          foreach ($url in $urls) {
+          foreach ($url in $mpvUrls) {
             try {
               Write-Host "Downloading mpv from $url"
-              Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\mpv-dev.7z"
-              if ((Get-Item "$env:RUNNER_TEMP\mpv-dev.7z").Length -gt 1MB) {
-                $downloaded = $true
-                break
+              if (Test-Path mpv-dev.7z) { Remove-Item mpv-dev.7z -Force }
+              cmd /c "curl.exe -L --retry 5 --retry-delay 5 -o mpv-dev.7z `"$url`""
+              if (Test-Path mpv-dev.7z) {
+                $size = (Get-Item mpv-dev.7z).Length
+                if ($size -gt 1000000) {
+                  $downloaded = $true
+                  break
+                } else {
+                  Write-Warning "Downloaded mpv archive from $url is too small ($size bytes), trying next mirror..."
+                }
               }
             } catch {
               Write-Warning "Failed to download mpv from $url : $_"
             }
           }
-          if (-not $downloaded) { throw "Unable to download mpv archive." }
-          & "C:\Program Files\7-Zip\7z.exe" x "$env:RUNNER_TEMP\mpv-dev.7z" "-o$env:RUNNER_TEMP\mpv" -aoa | Out-Null
-          $dll = Get-ChildItem "$env:RUNNER_TEMP\mpv" -Recurse -Include "libmpv-2.dll","libmpv.dll" | Select-Object -First 1
-          if (-not $dll) {
-            Get-ChildItem "$env:RUNNER_TEMP\mpv" -Recurse | Select-Object FullName | Write-Host
-            throw "mpv archive did not contain libmpv DLL"
+          if (-not $downloaded) {
+            throw "Unable to download mpv archive from any mirror."
           }
-          "MPV_DLL_PATH=$($dll.FullName)" >> $env:GITHUB_ENV
+          $mpvExtract = Join-Path $env:GITHUB_WORKSPACE "mpv-download"
+          if (Test-Path $mpvExtract) { Remove-Item $mpvExtract -Recurse -Force }
+          New-Item -ItemType Directory -Path $mpvExtract | Out-Null
+          & "C:\Program Files\7-Zip\7z.exe" x mpv-dev.7z "-o$mpvExtract" -aoa | Out-Null
+          $dllPath = Get-ChildItem $mpvExtract -Recurse -Include "libmpv-2.dll","libmpv.dll" | Select-Object -First 1
+          if (-not $dllPath) {
+            Write-Host "Contents of mpv archive:"
+            Get-ChildItem $mpvExtract -Recurse | Select-Object FullName
+            throw "mpv archive did not extract libmpv DLL as expected"
+          }
+          "MPV_DLL_PATH=$($dllPath.FullName)" >> $env:GITHUB_ENV
 
       - name: Download FFmpeg shared build
         shell: pwsh
         run: |
-          $urls = @(
-            "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full-shared.7z",
-            "https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z"
+          $ffmpegUrls = @(
+            "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.7z",
+            "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.7z"
           )
-          $downloaded = $false
-          foreach ($url in $urls) {
+          $ffmpegDownloaded = $false
+          foreach ($url in $ffmpegUrls) {
             try {
               Write-Host "Downloading ffmpeg from $url"
-              Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\ffmpeg.7z"
-              $downloaded = $true
-              break
+              if (Test-Path ffmpeg.7z) { Remove-Item ffmpeg.7z -Force }
+              Invoke-WebRequest -Uri $url -OutFile ffmpeg.7z
+              if (Test-Path ffmpeg.7z) {
+                $ffmpegDownloaded = $true
+                break
+              }
             } catch {
               Write-Warning "Failed to download ffmpeg from $url : $_"
             }
           }
-          if (-not $downloaded) { throw "Unable to download ffmpeg archive." }
-          & "C:\Program Files\7-Zip\7z.exe" x "$env:RUNNER_TEMP\ffmpeg.7z" "-o$env:RUNNER_TEMP\ffmpeg" -aoa | Out-Null
-          $root = Get-ChildItem "$env:RUNNER_TEMP\ffmpeg" -Directory | Where-Object { $_.Name -like "ffmpeg-*" } | Select-Object -First 1
-          if (-not $root) { throw "ffmpeg archive did not extract as expected" }
-          "FFMPEG_BIN_PATH=$($root.FullName)\bin" >> $env:GITHUB_ENV
+          if (-not $ffmpegDownloaded) { throw "Unable to download ffmpeg archive." }
+          if (Test-Path .\ffmpeg) { Remove-Item .\ffmpeg -Recurse -Force }
+          & "C:\Program Files\7-Zip\7z.exe" x ffmpeg.7z -offmpeg -aoa | Out-Null
+          $ffmpegRoot = Get-ChildItem .\ffmpeg -Directory | Where-Object { $_.Name -like "ffmpeg-*" } | Select-Object -First 1
+          if (-not $ffmpegRoot) { throw "ffmpeg archive did not extract as expected" }
+          "FFMPEG_BIN_PATH=$($ffmpegRoot.FullName)\bin" >> $env:GITHUB_ENV
 
       - name: Configure and build
         shell: pwsh
