@@ -1,0 +1,205 @@
+name: Windows Build
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+env:
+  QTDIR: C:\Qt\5.15.2\msvc2019_64
+  Qt5_DIR: C:\Qt\5.15.2\msvc2019_64\lib\cmake\Qt5
+
+jobs:
+  build:
+    runs-on: windows-latest
+    outputs:
+      package_version: ${{ steps.version.outputs.package_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Determine version
+        id: version
+        shell: pwsh
+        run: |
+          $match = Select-String -Path .\CMakeLists.txt -Pattern 'project\(stremio VERSION "([^"]+)"\)'
+          if (-not $match) { throw "Unable to determine package version" }
+          $version = $match.Matches[0].Groups[1].Value
+          "PACKAGE_VERSION=$version" >> $env:GITHUB_ENV
+          "package_version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Upgrade pip and install aqt
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install aqtinstall
+
+      - name: Install Qt 5.15.2
+        shell: pwsh
+        run: |
+          $qtDir = "$env:QTDIR"
+          $qmake = Join-Path $qtDir "bin\qmake.exe"
+          if (-not (Test-Path $qmake)) {
+            python -m aqt install-qt windows desktop 5.15.2 win64_msvc2019_64 -O C:\Qt --modules qtwebengine
+          } else {
+            Write-Host "Qt already installed at $qtDir"
+          }
+
+      - name: Install tools
+        shell: pwsh
+        run: |
+          choco install -y 7zip nsis
+
+      - name: Install OpenSSL
+        shell: pwsh
+        run: |
+          $url = "https://slproweb.com/download/Win64OpenSSL-1_1_1w.exe"
+          $installer = "$env:RUNNER_TEMP\Win64OpenSSL.exe"
+          Invoke-WebRequest -Uri $url -OutFile $installer
+          Start-Process $installer -ArgumentList '/silent','/verysilent','/sp-','/suppressmsgboxes','/dir=C:\OpenSSL-Win64' -Wait
+          Remove-Item $installer
+          "OPENSSL_BIN_PATH=C:\OpenSSL-Win64\bin" >> $env:GITHUB_ENV
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "14.15.0"
+
+      - name: Expose node executable
+        shell: pwsh
+        run: |
+          $node = (Get-Command node).Source
+          "NODE_EXE=$node" >> $env:GITHUB_ENV
+
+      - name: Download mpv runtime
+        shell: pwsh
+        run: |
+          $urls = @(
+            "https://downloads.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251116-git-701201b.7z?viasf=1",
+            "https://downloads.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251026-git-aa2dad0.7z?viasf=1"
+          )
+          $downloaded = $false
+          foreach ($url in $urls) {
+            try {
+              Write-Host "Downloading mpv from $url"
+              Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\mpv-dev.7z"
+              if ((Get-Item "$env:RUNNER_TEMP\mpv-dev.7z").Length -gt 1MB) {
+                $downloaded = $true
+                break
+              }
+            } catch {
+              Write-Warning "Failed to download mpv from $url : $_"
+            }
+          }
+          if (-not $downloaded) { throw "Unable to download mpv archive." }
+          & "C:\Program Files\7-Zip\7z.exe" x "$env:RUNNER_TEMP\mpv-dev.7z" "-o$env:RUNNER_TEMP\mpv" -aoa | Out-Null
+          $dll = Get-ChildItem "$env:RUNNER_TEMP\mpv" -Recurse -Include "libmpv-2.dll","libmpv.dll" | Select-Object -First 1
+          if (-not $dll) {
+            Get-ChildItem "$env:RUNNER_TEMP\mpv" -Recurse | Select-Object FullName | Write-Host
+            throw "mpv archive did not contain libmpv DLL"
+          }
+          "MPV_DLL_PATH=$($dll.FullName)" >> $env:GITHUB_ENV
+
+      - name: Download FFmpeg shared build
+        shell: pwsh
+        run: |
+          $urls = @(
+            "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full-shared.7z",
+            "https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z"
+          )
+          $downloaded = $false
+          foreach ($url in $urls) {
+            try {
+              Write-Host "Downloading ffmpeg from $url"
+              Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\ffmpeg.7z"
+              $downloaded = $true
+              break
+            } catch {
+              Write-Warning "Failed to download ffmpeg from $url : $_"
+            }
+          }
+          if (-not $downloaded) { throw "Unable to download ffmpeg archive." }
+          & "C:\Program Files\7-Zip\7z.exe" x "$env:RUNNER_TEMP\ffmpeg.7z" "-o$env:RUNNER_TEMP\ffmpeg" -aoa | Out-Null
+          $root = Get-ChildItem "$env:RUNNER_TEMP\ffmpeg" -Directory | Where-Object { $_.Name -like "ffmpeg-*" } | Select-Object -First 1
+          if (-not $root) { throw "ffmpeg archive did not extract as expected" }
+          "FFMPEG_BIN_PATH=$($root.FullName)\bin" >> $env:GITHUB_ENV
+
+      - name: Configure and build
+        shell: pwsh
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          if (-not $vsPath) { throw "Visual Studio installation not found" }
+          $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
+          $cmd = "call `"$vcvars`" && cmake -B build -G `"NMake Makefiles`" -DCMAKE_BUILD_TYPE=Release . && cmake --build build"
+          cmd.exe /c $cmd
+
+      - name: Package Windows artifacts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dist = Join-Path $PWD "dist-win"
+          if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
+          New-Item $dist -ItemType Directory | Out-Null
+
+          Copy-Item build\*.exe $dist
+          Copy-Item build\*.dll $dist
+          Copy-Item windows\*.dll $dist -Force
+          Copy-Item windows\*.exe $dist -Force
+          Copy-Item windows\DS\* $dist -Force
+          Copy-Item "$env:OPENSSL_BIN_PATH\*.dll" $dist -Force
+
+          & windows\generate_stremio-runtime.cmd $dist
+
+          $serverUrl = Get-Content .\server-url.txt -Raw
+          Invoke-WebRequest -Uri $serverUrl -OutFile (Join-Path $dist "server.js")
+
+          Copy-Item "$env:FFMPEG_BIN_PATH\ffmpeg.exe" $dist -Force
+          Copy-Item "$env:FFMPEG_BIN_PATH\ffprobe.exe" $dist -Force
+          Get-ChildItem "$env:FFMPEG_BIN_PATH\*.dll" | Copy-Item -Destination $dist -Force
+
+          Copy-Item "$env:MPV_DLL_PATH" (Join-Path $dist "mpv-1.dll") -Force
+
+          $windeploy = Join-Path $env:QTDIR 'bin\windeployqt.exe'
+          & $windeploy --release --no-compiler-runtime --angle --qmldir=. (Join-Path $dist "stremio.exe")
+          Set-Content -Path (Join-Path $dist "qt.conf") -Value "[Qt]`nangle=true`n" -Encoding ASCII
+
+          $nsis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          & $nsis windows\installer\windows-installer.nsi
+
+          Compress-Archive -Path "$dist\*" -DestinationPath "Stremio $env:PACKAGE_VERSION.zip" -Force
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stremio-windows
+          path: |
+            Stremio ${{ env.PACKAGE_VERSION }}.zip
+            Stremio ${{ env.PACKAGE_VERSION }}.exe
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: stremio-windows
+          path: artifacts
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Stremio ${{ needs.build.outputs.package_version }}
+          files: |
+            artifacts/*.zip
+            artifacts/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

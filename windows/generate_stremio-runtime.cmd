@@ -6,12 +6,16 @@ set rt_exe="%rt_path%\stremio-runtime.exe"
 
 set rh="C:\RH\ResourceHacker.exe"
 
-set node_x86="C:\Program Files (x86)\nodejs\node.exe"
-set node_x64="C:\Program Files\nodejs\node.exe"
-if exist %node_x64% (
-    set node=%node_x64%
+if defined NODE_EXE (
+    set "node=%NODE_EXE%"
 ) else (
-    set node=%node_x86%
+    set "node_x86=C:\Program Files (x86)\nodejs\node.exe"
+    set "node_x64=C:\Program Files\nodejs\node.exe"
+    if exist "%node_x64%" (
+        set "node=%node_x64%"
+    ) else (
+        set "node=%node_x86%"
+    )
 )
 
 pushd %~dp0
@@ -23,12 +27,12 @@ popd
 
 :: Check if all paths are correct
 if not exist %rcedit% goto :norcedit
-if not exist %node% goto :nonode
+if not exist "%node%" goto :nonode
 if not exist %rt_icon% goto :noico
 if not exist "%rt_path%\" goto :nodir
 
 :: Copy node.exe to the dist dir and remove signature
-copy %node% "%rt_exe%"
+copy "%node%" "%rt_exe%"
 signtool remove /s %rt_exe%
 
 :: Patch the exe
