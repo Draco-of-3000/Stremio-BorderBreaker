@@ -21,13 +21,11 @@ install:
 
   # Install OpenSSL (Win64)
   - ps: |
-      $opensslHashesUrl = 'https://raw.githubusercontent.com/slproweb/opensslhashes/master/win64_openssl_hashes.json'
-      $files = (Invoke-RestMethod $opensslHashesUrl).files
-      $file = $files.psobject.properties.name | ? { $_.StartsWith('Win64OpenSSL-1_1_1') -and $_.EndsWith('.exe') } | Select-Object -First 1
-      Start-FileDownload $files.$file.url
-      if ((Get-FileHash $file -Algorithm SHA256).Hash -ne $files.$file.sha256) { throw "The checksum does not match" }
-      Start-Process $file -ArgumentList '/silent /verysilent /sp- /suppressmsgboxes /dir=C:\OpenSSL-Win64' -Wait
-      del $file
+      $opensslUrl = "https://slproweb.com/download/Win64OpenSSL-1_1_1w.exe"
+      $installer = "Win64OpenSSL.exe"
+      Invoke-WebRequest -Uri $opensslUrl -OutFile $installer
+      Start-Process $installer -ArgumentList '/silent /verysilent /sp- /suppressmsgboxes /dir=C:\OpenSSL-Win64' -Wait
+      del $installer
   - set OPENSSL_BIN_PATH=C:\OpenSSL-Win64\bin
 
   # Download rcedit
