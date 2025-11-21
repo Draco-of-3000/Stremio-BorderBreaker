@@ -79,8 +79,24 @@ install:
   # Download mpv (x64)
   - ps: |
       $repo = $env:APPVEYOR_BUILD_FOLDER
-      $mpvUrl = "https://github.com/hooke007/MPV_lazy/releases/download/2024-02-18/mpv-dev-x86_64-20240218-git-a6f65f7.7z"
-      Invoke-WebRequest -Uri $mpvUrl -OutFile mpv-dev.7z
+      $mpvUrls = @(
+        "https://github.com/hooke007/MPV_lazy/releases/download/2024-02-18/mpv-dev-x86_64-20240218-git-a6f65f7.7z",
+        "https://github.com/eko5624/MPV-release/releases/download/2024-02-18/mpv-dev-x86_64-20240218-git-a6f65f7.7z"
+      )
+      $downloaded = $false
+      foreach ($url in $mpvUrls) {
+        try {
+          Write-Host "Downloading mpv from $url"
+          Invoke-WebRequest -Uri $url -OutFile mpv-dev.7z -UseBasicParsing
+          $downloaded = $true
+          break
+        } catch {
+          Write-Warning "Failed to download mpv from $url : $_"
+        }
+      }
+      if (-not $downloaded) {
+        throw "Unable to download mpv archive from any mirror."
+      }
       7z x mpv-dev.7z -ompv -aoa | Out-Null
       $mpvRoot = Get-ChildItem .\mpv -Directory | Where-Object { $_.Name -like "mpv-dev*" } | Select-Object -First 1
       if (-not $mpvRoot) { throw "mpv archive did not extract as expected" }
