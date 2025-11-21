@@ -166,9 +166,6 @@ jobs:
         # Set version for installer (must be X.X.X format for NSIS)
         $env:package_version = "4.4.169"
         
-        # Debug: Check if signing is disabled
-        Get-Content ./windows/installer/windows-installer.nsi | Select-String "uninstfinalize"
-        
         # Build NSIS installer
         & "C:\Program Files (x86)\NSIS\makensis.exe" /V2 ./windows/installer/windows-installer.nsi
         
