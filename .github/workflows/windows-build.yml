@@ -61,7 +61,7 @@ jobs:
       with:
         arch: x64
     
-      - name: Download dependencies
+    - name: Download dependencies
         shell: pwsh
         run: |
           # Download server.js
