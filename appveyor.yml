@@ -118,9 +118,27 @@ install:
 
   # Download FFmpeg (x64 shared build)
   - ps: |
-      $ffmpegUrl = "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-6.1.1-full_build-shared.zip"
-      Invoke-WebRequest -Uri $ffmpegUrl -OutFile ffmpeg.zip
-      7z x ffmpeg.zip -offmpeg -aoa | Out-Null
+      $ffmpegUrls = @(
+        "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.7z",
+        "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.7z"
+      )
+      $ffmpegDownloaded = $false
+      foreach ($url in $ffmpegUrls) {
+        try {
+          Write-Host "Downloading ffmpeg from $url"
+          if (Test-Path ffmpeg.7z) { Remove-Item ffmpeg.7z -Force }
+          Invoke-WebRequest -Uri $url -OutFile ffmpeg.7z
+          if (Test-Path ffmpeg.7z) {
+            $ffmpegDownloaded = $true
+            break
+          }
+        } catch {
+          Write-Warning "Failed to download ffmpeg from $url : $_"
+        }
+      }
+      if (-not $ffmpegDownloaded) { throw "Unable to download ffmpeg archive." }
+      if (Test-Path .\ffmpeg) { Remove-Item .\ffmpeg -Recurse -Force }
+      7z x ffmpeg.7z -offmpeg -aoa | Out-Null
       $ffmpegRoot = Get-ChildItem .\ffmpeg -Directory | Where-Object { $_.Name -like "ffmpeg-*" } | Select-Object -First 1
       if (-not $ffmpegRoot) { throw "ffmpeg archive did not extract as expected" }
       $env:FFMPEG_BIN_PATH = Join-Path $ffmpegRoot.FullName "bin"
