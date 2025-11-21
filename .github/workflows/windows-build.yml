@@ -68,8 +68,15 @@ jobs:
         $serverUrl = Get-Content -Path ./server-url.txt
         Invoke-WebRequest -Uri $serverUrl -OutFile ./server.js
         
-        # Download rcedit (needed for stremio-runtime generation)
+        # Download rcedit
         Invoke-WebRequest -Uri "https://github.com/electron/rcedit/releases/download/v1.1.1/rcedit-x86.exe" -OutFile ./rcedit-x86.exe
+        
+        # Download mpv-dev 64-bit (2021-12-26 build to match API ~1.108)
+        $mpvUrl = "https://sourceforge.net/projects/mpv-player-windows/files/64bit/mpv-dev-x86_64-20211226-git-029296f.7z/download"
+        Invoke-WebRequest -Uri $mpvUrl -OutFile mpv-dev.7z
+        
+        # Extract mpv-dev to deps/libmpv (overwriting include and lib)
+        7z x mpv-dev.7z -odeps/libmpv -aoa
     
     - name: Build with CMake
       shell: pwsh
@@ -92,8 +99,8 @@ jobs:
         Copy-Item windows\ffmpeg.exe dist-win\
         Copy-Item windows\ffprobe.exe dist-win\
         
-        # Copy MPV and FFmpeg DLLs
-        Copy-Item windows\*.dll dist-win\
+        # Copy repo DLLs (FFmpeg etc) - excluding mpv-1.dll as we want the new one
+        Get-ChildItem windows\*.dll -Exclude "mpv-1.dll" | Copy-Item -Destination dist-win\
         
         # Copy DS (Desktop Search) files
         Copy-Item windows\DS\DS.exe dist-win\
@@ -111,6 +118,9 @@ jobs:
         # Copy built Qt shell files
         Copy-Item build\*.dll dist-win\ -ErrorAction SilentlyContinue
         Copy-Item build\stremio.exe dist-win\
+        
+        # Copy new mpv DLL from deps/libmpv (extracted from dev package)
+        Copy-Item deps\libmpv\*.dll dist-win\
         
         # Copy server.js
         Copy-Item server.js dist-win\
