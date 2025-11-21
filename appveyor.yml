@@ -121,7 +121,13 @@ test_script:
   - ps: if (!$mpvExists) { throw 'mpv-1.dll does not exist' }
 
   # prepare-windows-qt
-  - windeployqt --release --no-compiler-runtime --qmldir=. ./dist-win/stremio.exe
+  - ps: |
+      $windeploy = Join-Path $env:QTDIR 'bin\windeployqt.exe'
+      if (-not (Test-Path $windeploy)) {
+        Get-ChildItem -Path C:\Qt -Recurse -Filter windeployqt.exe -ErrorAction SilentlyContinue | Select-Object FullName | Format-Table | Out-String | Write-Host
+        throw "windeployqt not found at $windeploy"
+      }
+      & $windeploy --release --no-compiler-runtime --qmldir=. ./dist-win/stremio.exe
 
   # sign-windows-files
   #- if "%DEPLOY%" == "true" SignTool sign /f ./windows/smartcode-20211118-20241118.pfx /p %CERT_PASS%  ./dist-win/stremio.exe
