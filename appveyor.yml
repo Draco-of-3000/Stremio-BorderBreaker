@@ -108,9 +108,9 @@ install:
       if (Test-Path $mpvExtract) { Remove-Item $mpvExtract -Recurse -Force }
       New-Item -ItemType Directory -Path $mpvExtract | Out-Null
       7z x mpv-dev.7z -o$mpvExtract -aoa | Out-Null
-      $dllPath = Join-Path $mpvExtract "libmpv-2.dll"
-      if (-not (Test-Path $dllPath)) { throw "mpv archive did not extract libmpv-2.dll as expected" }
-      $env:MPV_DLL_PATH = $dllPath
+      $dllPath = Get-ChildItem $mpvExtract -Recurse -Filter "libmpv-2.dll" | Select-Object -First 1
+      if (-not $dllPath) { throw "mpv archive did not extract libmpv-2.dll as expected" }
+      $env:MPV_DLL_PATH = $dllPath.FullName
 
   # Download FFmpeg (x64 shared build)
   - ps: |
