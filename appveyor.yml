@@ -78,7 +78,6 @@ install:
 
   # Download mpv (x64)
   - ps: |
-      $repo = $env:APPVEYOR_BUILD_FOLDER
       $mpvUrls = @(
         "https://liquidtelecom.dl.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251116-git-701201b.7z?viasf=1",
         "https://pilotfiber.dl.sourceforge.net/project/mpv-player-windows/libmpv/mpv-dev-x86_64-v3-20251116-git-701201b.7z?viasf=1"
@@ -105,12 +104,13 @@ install:
       if (-not $downloaded) {
         throw "Unable to download mpv archive from any mirror."
       }
-      7z x mpv-dev.7z -ompv -aoa | Out-Null
-      $mpvRoot = Get-ChildItem .\mpv -Directory | Where-Object { $_.Name -like "mpv-dev*" } | Select-Object -First 1
-      if (-not $mpvRoot) { throw "mpv archive did not extract as expected" }
-      Copy-Item -Path (Join-Path $mpvRoot.FullName "include\mpv\*") -Destination (Join-Path $repo "deps\libmpv\include\mpv") -Recurse -Force
-      Copy-Item -Path (Join-Path $mpvRoot.FullName "lib\mpv.lib") -Destination (Join-Path $repo "deps\libmpv\win32-x64\mpv.lib") -Force
-      $env:MPV_DLL_PATH = Join-Path $mpvRoot.FullName "mpv-1.dll"
+      $mpvExtract = Join-Path $env:APPVEYOR_BUILD_FOLDER "mpv-download"
+      if (Test-Path $mpvExtract) { Remove-Item $mpvExtract -Recurse -Force }
+      New-Item -ItemType Directory -Path $mpvExtract | Out-Null
+      7z x mpv-dev.7z -o$mpvExtract -aoa | Out-Null
+      $dllPath = Join-Path $mpvExtract "libmpv-2.dll"
+      if (-not (Test-Path $dllPath)) { throw "mpv archive did not extract libmpv-2.dll as expected" }
+      $env:MPV_DLL_PATH = $dllPath
 
   # Download FFmpeg (x64 shared build)
   - ps: |
