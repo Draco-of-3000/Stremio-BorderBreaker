@@ -61,39 +61,69 @@ jobs:
       with:
         arch: x64
     
-    - name: Download dependencies
-      shell: pwsh
-      run: |
-        # Download server.js
-        $serverUrl = Get-Content -Path ./server-url.txt
-        Invoke-WebRequest -Uri $serverUrl -OutFile ./server.js
-        
-        # Download rcedit
-        Invoke-WebRequest -Uri "https://github.com/electron/rcedit/releases/download/v1.1.1/rcedit-x86.exe" -OutFile ./rcedit-x86.exe
-        
-        # Download mpv-dev 64-bit (2021-12-26 build to match API ~1.108)
-        $mpvUrl = "https://downloads.sourceforge.net/project/mpv-player-windows/64bit/mpv-dev-x86_64-20211226-git-029296f.7z"
-        $mpvArchive = Join-Path $PWD "mpv-dev.7z"
-        & curl.exe -L --retry 5 --retry-delay 5 --fail -o $mpvArchive $mpvUrl
-        if ($LASTEXITCODE -ne 0) {
-          throw "Failed to download mpv package from $mpvUrl"
-        }
-        
-        # Extract mpv-dev archive and update deps/libmpv contents
-        $mpvExtract = Join-Path $PWD "mpv-dev-extract"
-        Remove-Item $mpvExtract -Recurse -Force -ErrorAction SilentlyContinue
-        7z x $mpvArchive "-o$mpvExtract" -aoa | Out-Null
-        $mpvRoot = Get-ChildItem $mpvExtract | Where-Object { $_.PSIsContainer -and $_.Name -like "mpv-dev*" } | Select-Object -First 1
-        if (-not $mpvRoot) {
-          throw "mpv archive structure not recognized; contents: $(Get-ChildItem $mpvExtract | Select-Object -ExpandProperty Name -Join ', ')"
-        }
-        $mpvInclude = Join-Path $mpvRoot.FullName "include/mpv"
-        $mpvLibDir = Join-Path $mpvRoot.FullName "lib"
-        New-Item -ItemType Directory -Force -Path "deps/libmpv/include/mpv" | Out-Null
-        New-Item -ItemType Directory -Force -Path "deps/libmpv/win32-x64" | Out-Null
-        Copy-Item -Path (Join-Path $mpvInclude "*") -Destination "deps/libmpv/include/mpv" -Recurse -Force
-        Copy-Item -Path (Join-Path $mpvLibDir "mpv.lib") -Destination "deps/libmpv/win32-x64/mpv.lib" -Force
-        Copy-Item -Path (Join-Path $mpvRoot.FullName "mpv-1.dll") -Destination "deps/libmpv/mpv-1.dll" -Force
+      - name: Download dependencies
+        shell: pwsh
+        run: |
+          # Download server.js
+          $serverUrl = Get-Content -Path ./server-url.txt
+          Invoke-WebRequest -Uri $serverUrl -OutFile ./server.js
+          
+          # Download rcedit
+          Invoke-WebRequest -Uri "https://github.com/electron/rcedit/releases/download/v1.1.1/rcedit-x86.exe" -OutFile ./rcedit-x86.exe
+          
+          # Download mpv-dev 64-bit package (multiple mirrors / fallbacks)
+          $mpvArchive = Join-Path $PWD "mpv-dev.7z"
+          $mpvUrls = @(
+            "https://sourceforge.net/projects/mpv-player-windows/files/64bit/mpv-dev-x86_64-20211226-git-029296f.7z/download",
+            "https://github.com/zhongfly/mpv-winbuild/releases/download/2024-02-18/mpv-dev-x86_64-20240218-git-a6f65f7.7z"
+          )
+          $mpvDownloaded = $false
+          foreach ($url in $mpvUrls) {
+            try {
+              Write-Host "Downloading mpv from $url"
+              Invoke-WebRequest -Uri $url -OutFile $mpvArchive -UseBasicParsing -MaximumRedirection 5 -Headers @{ "User-Agent" = "Mozilla/5.0" }
+              if ((Test-Path $mpvArchive) -and ((Get-Item $mpvArchive).Length -gt 1000000)) {
+                $mpvDownloaded = $true
+                break
+              } else {
+                Write-Warning "Downloaded file from $url is suspiciously small, trying next mirror..."
+              }
+            } catch {
+              Write-Warning "Failed to download mpv from $url. $_"
+            }
+          }
+          if (-not $mpvDownloaded) {
+            throw "Unable to download mpv-dev archive from the configured mirrors."
+          }
+          
+          # Extract mpv-dev archive and update deps/libmpv contents
+          $mpvExtract = Join-Path $PWD "mpv-dev-extract"
+          Remove-Item $mpvExtract -Recurse -Force -ErrorAction SilentlyContinue
+          7z x $mpvArchive "-o$mpvExtract" -aoa | Out-Null
+          if (-not (Test-Path $mpvExtract)) {
+            throw "mpv archive extraction failed."
+          }
+          $mpvRoot = Get-ChildItem $mpvExtract | Where-Object { $_.PSIsContainer -and $_.Name -like "mpv-dev*" } | Select-Object -First 1
+          if (-not $mpvRoot) {
+            throw "mpv archive structure not recognized; contents: $(Get-ChildItem $mpvExtract | Select-Object -ExpandProperty Name -Join ', ')"
+          }
+          $mpvInclude = Join-Path $mpvRoot.FullName "include/mpv"
+          $mpvLib = Get-ChildItem -Path $mpvRoot.FullName -Recurse -Filter "mpv.lib" | Select-Object -First 1
+          $mpvDll = Get-ChildItem -Path $mpvRoot.FullName -Recurse -Filter "mpv-1.dll" | Select-Object -First 1
+          if (-not (Test-Path $mpvInclude)) {
+            throw "mpv include directory not found inside archive."
+          }
+          if (-not $mpvLib -or -not (Test-Path $mpvLib.FullName)) {
+            throw "mpv.lib not found in extracted archive."
+          }
+          if (-not $mpvDll -or -not (Test-Path $mpvDll.FullName)) {
+            throw "mpv-1.dll not found in extracted archive."
+          }
+          New-Item -ItemType Directory -Force -Path "deps/libmpv/include/mpv" | Out-Null
+          New-Item -ItemType Directory -Force -Path "deps/libmpv/win32-x64" | Out-Null
+          Copy-Item -Path (Join-Path $mpvInclude "*") -Destination "deps/libmpv/include/mpv" -Recurse -Force
+          Copy-Item -Path $mpvLib.FullName -Destination "deps/libmpv/win32-x64/mpv.lib" -Force
+          Copy-Item -Path $mpvDll.FullName -Destination "deps/libmpv/mpv-1.dll" -Force
     
     - name: Build with CMake
       shell: pwsh
