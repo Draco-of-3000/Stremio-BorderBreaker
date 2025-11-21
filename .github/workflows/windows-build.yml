@@ -118,43 +118,32 @@ jobs:
     - name: Generate stremio-runtime.exe
       shell: cmd
       run: |
-        REM Set Node.js path for the script
-        set "NODE_PATH=C:\Program Files\nodejs\node.exe"
+        REM Get absolute paths
+        set "WORKSPACE=%CD%"
+        set "NODE_EXE=C:\Program Files\nodejs\node.exe"
+        set "RCEDIT_EXE=%WORKSPACE%\rcedit-x86.exe"
+        set "ICON_FILE=%WORKSPACE%\images\stremio_gray.ico"
+        set "DIST_DIR=%WORKSPACE%\dist-win"
         
-        REM Create a temporary batch file that sets the correct Node path
-        echo @echo off > temp_generate.cmd
-        echo set "node=C:\Program Files\nodejs\node.exe" >> temp_generate.cmd
-        echo set "rt_path=%%~dpf1" >> temp_generate.cmd
-        echo set rt_exe="%%rt_path%%\stremio-runtime.exe" >> temp_generate.cmd
-        echo pushd %%~dp0 >> temp_generate.cmd
-        echo set rcedit="%%cd%%\..\rcedit-x86.exe" >> temp_generate.cmd
-        echo pushd ..\images >> temp_generate.cmd
-        echo set rt_icon="%%cd%%\stremio_gray.ico" >> temp_generate.cmd
-        echo popd >> temp_generate.cmd
-        echo popd >> temp_generate.cmd
-        echo if not exist %%rcedit%% goto :norcedit >> temp_generate.cmd
-        echo if not exist %%node%% goto :nonode >> temp_generate.cmd
-        echo if not exist %%rt_icon%% goto :noico >> temp_generate.cmd
-        echo if not exist "%%rt_path%%\" goto :nodir >> temp_generate.cmd
-        echo copy %%node%% "%%rt_exe%%" >> temp_generate.cmd
-        echo %%rcedit%% %%rt_exe%% --set-icon %%rt_icon%% --set-version-string "ProductName" "StremioRuntime" --set-version-string "FileDescription" "Stremio Server JavaScript Runtime" --set-version-string "OriginalFilename" "stremio-runtime.exe" --set-version-string "InternalName" "stremio-runtime" >> temp_generate.cmd
-        echo exit /b %%errorlevel%% >> temp_generate.cmd
-        echo :norcedit >> temp_generate.cmd
-        echo echo rcedit-x86.exe not found at %%rcedit%% >> temp_generate.cmd
-        echo exit /b 1 >> temp_generate.cmd
-        echo :nonode >> temp_generate.cmd
-        echo echo Node.exe not found at %%node%% >> temp_generate.cmd
-        echo exit /b 2 >> temp_generate.cmd
-        echo :noico >> temp_generate.cmd
-        echo echo Icon file not found at %%rt_icon%% >> temp_generate.cmd
-        echo exit /b 3 >> temp_generate.cmd
-        echo :nodir >> temp_generate.cmd
-        echo echo Destination directory does not exists at %%rt_path%% >> temp_generate.cmd
-        echo exit /b 4 >> temp_generate.cmd
+        REM Check if files exist
+        if not exist "%NODE_EXE%" (
+          echo Node.exe not found at %NODE_EXE%
+          exit /b 1
+        )
+        if not exist "%RCEDIT_EXE%" (
+          echo rcedit-x86.exe not found at %RCEDIT_EXE%
+          exit /b 1
+        )
+        if not exist "%ICON_FILE%" (
+          echo Icon file not found at %ICON_FILE%
+          exit /b 1
+        )
         
-        REM Run the script
-        cd windows
-        call ..\temp_generate.cmd ..\dist-win
+        REM Copy node.exe to stremio-runtime.exe
+        copy "%NODE_EXE%" "%DIST_DIR%\stremio-runtime.exe"
+        
+        REM Patch the exe with rcedit
+        "%RCEDIT_EXE%" "%DIST_DIR%\stremio-runtime.exe" --set-icon "%ICON_FILE%" --set-version-string "ProductName" "StremioRuntime" --set-version-string "FileDescription" "Stremio Server JavaScript Runtime" --set-version-string "OriginalFilename" "stremio-runtime.exe" --set-version-string "InternalName" "stremio-runtime"
     
     - name: Deploy Qt dependencies
       shell: pwsh
