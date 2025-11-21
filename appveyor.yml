@@ -87,9 +87,17 @@ install:
       foreach ($url in $mpvUrls) {
         try {
           Write-Host "Downloading mpv from $url"
-          Invoke-WebRequest -Uri $url -OutFile mpv-dev.7z -UseBasicParsing
-          $downloaded = $true
-          break
+          if (Test-Path mpv-dev.7z) { Remove-Item mpv-dev.7z -Force }
+          cmd /c "curl.exe -L --retry 5 --retry-delay 5 -o mpv-dev.7z `"$url`""
+          if (Test-Path mpv-dev.7z) {
+            $size = (Get-Item mpv-dev.7z).Length
+            if ($size -gt 1000000) {
+              $downloaded = $true
+              break
+            } else {
+              Write-Warning "Downloaded mpv archive from $url is too small ($size bytes), trying next mirror..."
+            }
+          }
         } catch {
           Write-Warning "Failed to download mpv from $url : $_"
         }
