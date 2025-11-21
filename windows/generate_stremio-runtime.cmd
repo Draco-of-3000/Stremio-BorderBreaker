@@ -6,7 +6,13 @@ set rt_exe="%rt_path%\stremio-runtime.exe"
 
 set rh="C:\RH\ResourceHacker.exe"
 
-set node="C:\Program Files (x86)\nodejs\node.exe"
+set node_x86="C:\Program Files (x86)\nodejs\node.exe"
+set node_x64="C:\Program Files\nodejs\node.exe"
+if exist %node_x64% (
+    set node=%node_x64%
+) else (
+    set node=%node_x86%
+)
 
 pushd %~dp0
 set rcedit="%cd%\..\rcedit-x86.exe"
