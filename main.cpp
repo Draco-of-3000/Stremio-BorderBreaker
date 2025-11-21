@@ -49,13 +49,17 @@ void InitializeParameters(QQmlApplicationEngine *engine, MainApp& app) {
 
 int main(int argc, char **argv)
 {
-    qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--autoplay-policy=no-user-gesture-required");
+    QByteArray chromiumFlags = qgetenv("QTWEBENGINE_CHROMIUM_FLAGS");
+    if (!chromiumFlags.isEmpty())
+        chromiumFlags.append(' ');
+    chromiumFlags.append("--autoplay-policy=no-user-gesture-required");
     #ifdef _WIN32
+    chromiumFlags.append(" --use-angle=d3d11 --ignore-gpu-blacklist");
     // Default to ANGLE (DirectX), because that seems to eliminate so many issues on Windows
     // Also, according to the docs here: https://wiki.qt.io/Qt_5_on_Windows_ANGLE_and_OpenGL, ANGLE is also preferrable
     // We do not need advanced OpenGL features but we need more universal support
-
     Application::setAttribute(Qt::AA_UseOpenGLES);
+    Application::setAttribute(Qt::AA_ShareOpenGLContexts);
     auto winVer = QSysInfo::windowsVersion();
     if(winVer <= QSysInfo::WV_WINDOWS8 && winVer != QSysInfo::WV_None) {
         qputenv("NODE_SKIP_PLATFORM_CHECK", "1");
@@ -64,6 +68,7 @@ int main(int argc, char **argv)
         qputenv("QT_ANGLE_PLATFORM", "d3d9");
     }
     #endif
+    qputenv("QTWEBENGINE_CHROMIUM_FLAGS", chromiumFlags);
 
     // This is really broken on Linux
     #ifndef Q_OS_LINUX
@@ -76,6 +81,7 @@ int main(int argc, char **argv)
     Application::setOrganizationDomain("stremio.com");
 
     MainApp app(argc, argv, true);
+    QtWebEngine::initialize();
     #ifndef Q_OS_MACOS
     if( app.isSecondary() ) {
         if( app.arguments().count() > 1)
