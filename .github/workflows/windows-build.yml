@@ -22,9 +22,9 @@ jobs:
       package_version: ${{ steps.version.outputs.package_version }}
     steps:
       - uses: actions/checkout@v4
-      with:
-        submodules: recursive
-    
+        with:
+          submodules: recursive
+
       - name: Determine version
         id: version
         shell: pwsh
@@ -42,8 +42,8 @@ jobs:
           python -m pip install aqtinstall
 
       - name: Install Qt 5.15.2
-      shell: pwsh
-      run: |
+        shell: pwsh
+        run: |
           $qtDir = "$env:QTDIR"
           $qmake = Join-Path $qtDir "bin\qmake.exe"
           if (-not (Test-Path $qmake)) {
@@ -61,8 +61,8 @@ jobs:
           Copy-Item -Path "windows\NsProcess\Plugin\x86-unicode\nsProcess.dll" -Destination "C:\Program Files (x86)\NSIS\Plugins\x86-unicode" -Force
 
       - name: Install OpenSSL
-      shell: pwsh
-      run: |
+        shell: pwsh
+        run: |
           $url = "https://slproweb.com/download/Win64OpenSSL-1_1_1w.exe"
           $installer = "$env:RUNNER_TEMP\Win64OpenSSL.exe"
           Invoke-WebRequest -Uri $url -OutFile $installer
@@ -75,8 +75,8 @@ jobs:
           node-version: "14.15.0"
 
       - name: Expose node executable
-      shell: pwsh
-      run: |
+        shell: pwsh
+        run: |
           $node = (Get-Command node).Source
           "NODE_EXE=$node" >> $env:GITHUB_ENV
 
