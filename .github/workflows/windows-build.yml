@@ -152,6 +152,13 @@ jobs:
     
     - name: Install NSIS
       run: choco install nsis -y
+      
+    - name: Install NSIS Plugins
+      shell: pwsh
+      run: |
+        $nsisPath = "${env:ProgramFiles(x86)}\NSIS"
+        Copy-Item "windows/NsProcess/Include/nsProcess.nsh" "$nsisPath\Include\"
+        Copy-Item "windows/NsProcess/Plugin/x86-unicode/nsProcess.dll" "$nsisPath\Plugins\x86-unicode\"
     
     - name: Build installer
       shell: pwsh
