@@ -10,7 +10,7 @@ environment:
   aws_key: AKIAJWBFLU34IVITPLHA
   aws_secret:
     secure: X/MRT0y7Yb8tnzdcQ8Lq+A+/Yc5Ad2KWFYpaydFz0zDSaq8PxZ8XbFseDxjKYo6c
-  DEPLOY: true
+  DEPLOY: false
 
 init:
   # Prevent pull requests from attempting to sign package.
