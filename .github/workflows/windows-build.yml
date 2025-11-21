@@ -157,8 +157,23 @@ jobs:
       shell: pwsh
       run: |
         $nsisPath = "${env:ProgramFiles(x86)}\NSIS"
-        Copy-Item "windows/NsProcess/Include/nsProcess.nsh" "$nsisPath\Include\"
-        Copy-Item "windows/NsProcess/Plugin/x86-unicode/nsProcess.dll" "$nsisPath\Plugins\x86-unicode\"
+        Write-Host "NSIS Path: $nsisPath"
+        
+        # Copy header file to the same directory as the installer script
+        Copy-Item "windows/NsProcess/Include/nsProcess.nsh" "windows/installer/" -Force
+        Write-Host "Copied nsProcess.nsh to windows/installer/"
+        
+        # Copy DLL to NSIS plugins directory
+        $pluginDir = "$nsisPath\Plugins\x86-unicode"
+        if (!(Test-Path $pluginDir)) {
+            New-Item -ItemType Directory -Force -Path $pluginDir
+        }
+        Copy-Item "windows/NsProcess/Plugin/x86-unicode/nsProcess.dll" "$pluginDir\" -Force
+        Write-Host "Copied nsProcess.dll to $pluginDir"
+        
+        # Verify files
+        if (Test-Path "windows/installer/nsProcess.nsh") { Write-Host "Verified: windows/installer/nsProcess.nsh exists" } else { Write-Error "Missing: windows/installer/nsProcess.nsh" }
+        if (Test-Path "$pluginDir\nsProcess.dll") { Write-Host "Verified: $pluginDir\nsProcess.dll exists" } else { Write-Error "Missing: $pluginDir\nsProcess.dll" }
     
     - name: Build installer
       shell: pwsh
