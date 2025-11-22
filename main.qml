@@ -317,7 +317,7 @@ ApplicationWindow {
     Settings {
         id: bbSettings
         category: "BorderBreaker"
-        property int aspectMode: 0 // 0: Auto, 1: Fit, 2: Fill, 3: Stretch, 4: Original, 5: 21:9, 6: 32:9
+        property int aspectMode: 0 // 0: Auto, 1: Fill, 2: Stretch, 3: 16:9, 4: 4:3, 5: 1:1, 6: 21:9, 7: Ultrawide, 8: 32:9, 9: Super Ultrawide, 10: Cinema, 11: Original
         property bool autoDetect: true
         property bool showOverlay: true
     }
@@ -325,8 +325,8 @@ ApplicationWindow {
     Item {
         id: borderBreaker
         
-        property var modes: ["Auto", "Fit to Screen", "Fill (Crop)", "Stretch", "Original", "21:9 Ultrawide", "32:9 Super Ultrawide"]
-        property var modeRatios: [0, 0, -1, -1, -1, 2.333, 3.555] // -1 means special handling
+        property var modes: ["Auto", "Fill(Crop)", "Stretch", "16:9", "4:3", "1:1", "21:9", "Ultrawide", "32:9", "Super Ultrawide", "Cinema", "Original"]
+        property var modeRatios: [0, -2, -3, 1.7778, 1.3333, 1.0, 2.3333, 2.3704, 3.5556, 3.5556, 2.39, -1] 
         
         function cycleAspect() {
             bbSettings.aspectMode = (bbSettings.aspectMode + 1) % modes.length;
@@ -336,6 +336,12 @@ ApplicationWindow {
 
         function applyAspect() {
             var mode = bbSettings.aspectMode;
+            // Safety check
+            if (mode < 0 || mode >= modes.length) {
+                mode = 0;
+                bbSettings.aspectMode = 0;
+            }
+            
             var ratio = modeRatios[mode];
 
             // Reset first
@@ -343,24 +349,16 @@ ApplicationWindow {
             mpv.setProperty("video-aspect-override", -1);
 
             if (mode === 0) { // Auto
-                // Logic handled in checkAutoDetect, but we trigger it here if video is playing
                 var params = mpv.getProperty("video-out-params");
                 if (params) checkAutoDetect(params);
-            } else if (mode === 1) { // Fit to Screen
-                // Default behavior usually
-            } else if (mode === 2) { // Fill (Crop)
+            } else if (ratio === -2) { // Fill (Crop)
                 mpv.setProperty("panscan", 1.0);
-            } else if (mode === 3) { // Stretch
+            } else if (ratio === -3) { // Stretch
                 mpv.setProperty("video-aspect-override", Screen.width / Screen.height);
-            } else if (mode === 4) { // Original
-                mpv.setProperty("video-aspect-override", -1);
-            } else if (mode >= 5) { // Custom Ratios
+            } else if (ratio > 0) { // Fixed Ratios
                 mpv.setProperty("video-aspect-override", ratio);
-                // Also maybe crop if needed? Usually aspect override is enough for ultrawide content on 16:9 or vice versa
-                // But for "Ultrawide" on 16:9 screen, we want letterbox (default).
-                // For 16:9 content on Ultrawide screen, we want to CROP (Fill) usually?
-                // Let's assume "Ultrawide" mode means "Force this aspect ratio"
             }
+            // Original (ratio === -1) is handled by the reset
         }
 
         function checkAutoDetect(params) {
@@ -444,8 +442,8 @@ ApplicationWindow {
     Shortcut {
         sequence: "Ctrl+Shift+U"
         onActivated: {
-             // Quick toggle for Ultrawide Fill
-             bbSettings.aspectMode = 2; // Fill
+             // Quick toggle for Fill (Crop)
+             bbSettings.aspectMode = 1; // Fill
              borderBreaker.applyAspect();
              borderBreaker.showOSD("Fill (Crop)");
         }
