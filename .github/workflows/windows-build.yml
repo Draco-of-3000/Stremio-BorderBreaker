@@ -195,7 +195,6 @@ jobs:
 
           $windeploy = Join-Path $env:QTDIR 'bin\windeployqt.exe'
           & $windeploy --release --no-compiler-runtime --angle --qmldir=. (Join-Path $dist "stremio.exe")
-          Set-Content -Path (Join-Path $dist "qt.conf") -Value "[Qt]`nangle=true`n" -Encoding ASCII
 
           $nsis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
           & $nsis windows\installer\windows-installer.nsi

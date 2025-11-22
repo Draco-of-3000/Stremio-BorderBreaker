@@ -53,24 +53,31 @@ int main(int argc, char **argv)
     if (!chromiumFlags.isEmpty())
         chromiumFlags.append(' ');
     chromiumFlags.append("--autoplay-policy=no-user-gesture-required");
-    #ifdef _WIN32
-    chromiumFlags.append(" --use-angle=d3d11 --ignore-gpu-blacklist");
-    qputenv("QT_OPENGL", "angle");
-    qputenv("QT_ANGLE_PLATFORM", "d3d11");
-    // Default to ANGLE (DirectX), because that seems to eliminate so many issues on Windows
-    // Also, according to the docs here: https://wiki.qt.io/Qt_5_on_Windows_ANGLE_and_OpenGL, ANGLE is also preferrable
-    // We do not need advanced OpenGL features but we need more universal support
-    Application::setAttribute(Qt::AA_UseOpenGLES);
+#ifdef _WIN32
+    const bool forceAngle = qEnvironmentVariableIsSet("STREMIO_FORCE_ANGLE");
+    if (forceAngle) {
+        chromiumFlags.append(" --use-angle=d3d11 --ignore-gpu-blacklist");
+    }
+#endif
+    qputenv("QTWEBENGINE_CHROMIUM_FLAGS", chromiumFlags);
+
+#ifdef _WIN32
+    if (forceAngle) {
+        qputenv("QT_OPENGL", "angle");
+        qputenv("QT_ANGLE_PLATFORM", "d3d11");
+        Application::setAttribute(Qt::AA_UseOpenGLES);
+    } else {
+        Application::setAttribute(Qt::AA_UseDesktopOpenGL);
+    }
     Application::setAttribute(Qt::AA_ShareOpenGLContexts);
     auto winVer = QSysInfo::windowsVersion();
     if(winVer <= QSysInfo::WV_WINDOWS8 && winVer != QSysInfo::WV_None) {
         qputenv("NODE_SKIP_PLATFORM_CHECK", "1");
     }
-    if(winVer <= QSysInfo::WV_WINDOWS7 && winVer != QSysInfo::WV_None) {
+    if(forceAngle && winVer <= QSysInfo::WV_WINDOWS7 && winVer != QSysInfo::WV_None) {
         qputenv("QT_ANGLE_PLATFORM", "d3d9");
     }
-    #endif
-    qputenv("QTWEBENGINE_CHROMIUM_FLAGS", chromiumFlags);
+#endif
 
     // This is really broken on Linux
     #ifndef Q_OS_LINUX

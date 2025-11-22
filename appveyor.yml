@@ -211,7 +211,6 @@ test_script:
         throw "windeployqt not found at $windeploy"
       }
       & $windeploy --release --no-compiler-runtime --angle --qmldir=. dist-win/stremio.exe
-      Set-Content -Path .\dist-win\qt.conf -Value "[Qt]`nangle=true`n" -Encoding ASCII
 
   # sign-windows-files
   #- if "%DEPLOY%" == "true" SignTool sign /f ./windows/smartcode-20211118-20241118.pfx /p %CERT_PASS%  ./dist-win/stremio.exe
